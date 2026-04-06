@@ -1,0 +1,3928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NJOX — Fight Your Stress</title>
+    <style>
+/* ===== style.css ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0a0a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: monospace;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 400px;
+    height: 750px;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+@media (max-aspect-ratio: 400/750) {
+    #game-container {
+        width: 100vw;
+        height: calc(100vw * 750 / 400);
+    }
+}
+
+@media (min-aspect-ratio: 400/750) {
+    #game-container {
+        height: 100vh;
+        width: calc(100vh * 400 / 750);
+    }
+}
+
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 4px;
+    image-rendering: auto;
+}
+
+/* Modal overlay for boss prompt */
+#modal-container {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+    padding: 20px;
+}
+
+.modal-title {
+    color: #fff;
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    font-family: monospace;
+}
+
+.modal-body {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    text-align: center;
+    font-family: monospace;
+    max-width: 300px;
+    line-height: 1.5;
+}
+
+#boss-input {
+    width: 260px;
+    padding: 12px 16px;
+    font-size: 18px;
+    font-family: monospace;
+    font-weight: bold;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #e94560;
+    border-radius: 8px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#boss-input:focus {
+    border-color: #ff6b81;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+#boss-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+#boss-submit {
+    padding: 12px 32px;
+    font-size: 16px;
+    font-family: monospace;
+    font-weight: bold;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+#boss-submit:hover {
+    background: #ff6b81;
+    transform: scale(1.05);
+}
+
+#boss-submit:active {
+    transform: scale(0.95);
+}
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="modal-container"></div>
+    </div>
+    <script>
+// ===== js/constants.js =====
+window.NJOX = window.NJOX || {};
+
+// Canvas
+NJOX.CANVAS_W = 400;
+NJOX.CANVAS_H = 750;
+
+// Physics
+NJOX.BALL_SPEED = 700;
+NJOX.BALL_RADIUS = 6;
+NJOX.PHYSICS_STEP = 1 / 120;
+NJOX.GRAVITY = 0;
+
+// Grid
+NJOX.CELL_SIZE = 50;
+NJOX.GRID_COLS = Math.floor(NJOX.CANVAS_W / NJOX.CELL_SIZE);
+NJOX.GRID_TOP = 80;
+NJOX.FLOOR_Y = 580; // ball return line — shop area below
+NJOX.SHOP_Y = 590;  // shop bar starts here
+NJOX.SHOP_H = 160;  // shop bar height (590 to 750)
+
+// Gameplay
+NJOX.LAUNCH_INTERVAL = 0.06;
+NJOX.INITIAL_BALLS = 5;
+NJOX.BOSS_EVERY = 2; // boss every N levels (after level 1)
+NJOX.ROW_ADVANCE = 0.5;
+
+// Round system
+NJOX.ROUNDS_PER_LEVEL = 5;
+NJOX.SHOTS_PER_ROUND = 50;
+NJOX.BOSS_SHOTS = 15;
+
+// Shop prices
+NJOX.SHOP = {
+    FIRE_BALL:  { cost: 10, label: 'FIRE',   color: '#ff4444', desc: '5 fire balls, 3x dmg', count: 5 },
+    LASER:      { cost: 20, label: 'LASER',  color: '#00ffff', desc: 'Instant line, no shot' },
+    ROCKET:     { cost: 15, label: 'ROCKET', color: '#ff8800', desc: 'Destroy bottom row' },
+    ICE_BALL:   { cost: 12, label: 'ICE',    color: '#88ddff', desc: '5 ice balls, freeze', count: 5 },
+};
+
+// Colors
+NJOX.COLORS = {
+    BG: '#1a1a2e',
+    BG_GRADIENT_TOP: '#16213e',
+    BG_GRADIENT_BOT: '#0f3460',
+    FLOOR: '#e94560',
+    BALL: '#ffffff',
+    BALL_GLOW: 'rgba(255,255,255,0.3)',
+    AIM_LINE: 'rgba(255,255,255,0.4)',
+    TEXT: '#ffffff',
+    TEXT_DIM: 'rgba(255,255,255,0.6)',
+    HUD_BG: 'rgba(0,0,0,0.3)',
+
+    BASIC: '#4ecca3',
+    SPLITTER: '#a855f7',
+    EATER: '#ef4444',
+    COUNTER: '#f59e0b',
+    REACTIVE: '#3b82f6',
+    REACTIVE_MUTATED: '#ec4899',
+
+    BOSS_PHASE1: '#4ecca3',
+    BOSS_PHASE2: '#f59e0b',
+    BOSS_PHASE3: '#ef4444',
+    BOSS_RAGE: '#ff0055',
+
+    FIRE: '#ff4444',
+    ICE: '#88ddff',
+
+    MODAL_BG: 'rgba(0,0,0,0.7)',
+    BUTTON: '#e94560',
+    BUTTON_HOVER: '#ff6b81',
+    HP_BAR_BG: '#333',
+    HP_BAR_FILL: '#4ecca3',
+    SHOP_BG: 'rgba(0,0,0,0.5)',
+};
+
+// Creature HP scaling
+NJOX.BASE_HP = 1;
+NJOX.HP_PER_LEVEL = 0.8;
+
+// Creature types enum
+NJOX.CREATURE_TYPES = {
+    BASIC: 'basic',
+    SPLITTER: 'splitter',
+    EATER: 'eater',
+    COUNTER: 'counter',
+    REACTIVE: 'reactive',
+};
+
+// ===== js/utils.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Utils = {
+    clamp(val, min, max) {
+        return Math.max(min, Math.min(max, val));
+    },
+
+    lerp(a, b, t) {
+        return a + (b - a) * t;
+    },
+
+    distance(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    normalize(x, y) {
+        const len = Math.sqrt(x * x + y * y);
+        if (len === 0) return { x: 0, y: -1 };
+        return { x: x / len, y: y / len };
+    },
+
+    dot(ax, ay, bx, by) {
+        return ax * bx + ay * by;
+    },
+
+    // Draw a rounded rectangle on canvas
+    roundRect(ctx, x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    },
+
+    // Circle vs AABB collision — returns { hit, normal, overlap, face } or null
+    circleVsRect(cx, cy, cr, rx, ry, rw, rh) {
+        // Closest point on rect to circle center
+        const closestX = NJOX.Utils.clamp(cx, rx, rx + rw);
+        const closestY = NJOX.Utils.clamp(cy, ry, ry + rh);
+
+        const dx = cx - closestX;
+        const dy = cy - closestY;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq >= cr * cr) return null;
+
+        const dist = Math.sqrt(distSq);
+        let nx, ny;
+        if (dist === 0) {
+            // Circle center inside rect — push out via closest edge
+            const toLeft = cx - rx;
+            const toRight = rx + rw - cx;
+            const toTop = cy - ry;
+            const toBottom = ry + rh - cy;
+            const minDist = Math.min(toLeft, toRight, toTop, toBottom);
+            if (minDist === toTop) { nx = 0; ny = -1; }
+            else if (minDist === toBottom) { nx = 0; ny = 1; }
+            else if (minDist === toLeft) { nx = -1; ny = 0; }
+            else { nx = 1; ny = 0; }
+        } else {
+            nx = dx / dist;
+            ny = dy / dist;
+        }
+
+        // Determine which face was hit
+        let face;
+        if (closestY <= ry + 1) face = 'top';
+        else if (closestY >= ry + rh - 1) face = 'bottom';
+        else if (closestX <= rx + 1) face = 'left';
+        else face = 'right';
+
+        return {
+            hit: true,
+            nx, ny,
+            overlap: cr - dist,
+            face
+        };
+    },
+
+    // Random int in range [min, max]
+    randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
+    // Random float in range [min, max)
+    randFloat(min, max) {
+        return Math.random() * (max - min) + min;
+    },
+
+    // Shuffle array in place
+    shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+};
+
+// ===== js/state-machine.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.StateMachine = class StateMachine {
+    constructor() {
+        this.states = {};
+        this.current = null;
+        this.currentName = null;
+    }
+
+    add(name, stateObj) {
+        // stateObj must have: enter(data), update(dt), render(ctx), exit()
+        this.states[name] = stateObj;
+    }
+
+    transition(name, data) {
+        if (this.current && this.current.exit) {
+            this.current.exit();
+        }
+        this.currentName = name;
+        this.current = this.states[name];
+        if (this.current && this.current.enter) {
+            this.current.enter(data);
+        }
+    }
+
+    update(dt) {
+        if (this.current && this.current.update) {
+            this.current.update(dt);
+        }
+    }
+
+    render(ctx) {
+        if (this.current && this.current.render) {
+            this.current.render(ctx);
+        }
+    }
+};
+
+// ===== js/game-loop.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.GameLoop = class GameLoop {
+    constructor(updateFn, renderFn) {
+        this.updateFn = updateFn;
+        this.renderFn = renderFn;
+        this.lastTime = 0;
+        this.running = false;
+        this._tick = this._tick.bind(this);
+        this._workerTimer = null;
+    }
+
+    start() {
+        this.running = true;
+        this.lastTime = performance.now();
+        this._startTimer();
+    }
+
+    stop() {
+        this.running = false;
+        if (this._workerTimer) {
+            this._workerTimer.terminate();
+            this._workerTimer = null;
+        }
+    }
+
+    _startTimer() {
+        // Use a Web Worker to avoid background tab setTimeout throttling.
+        // Web Worker timers are not throttled by the browser.
+        try {
+            const blob = new Blob([
+                'setInterval(function(){postMessage("tick")},16)'
+            ], { type: 'application/javascript' });
+            this._workerTimer = new Worker(URL.createObjectURL(blob));
+            this._workerTimer.onmessage = () => {
+                if (this.running) this._tick(performance.now());
+            };
+        } catch (e) {
+            // Fallback to rAF if Workers unavailable
+            requestAnimationFrame(this._tick);
+        }
+    }
+
+    _tick(timestamp) {
+        if (!this.running) return;
+
+        if (!timestamp) timestamp = performance.now();
+        const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
+        this.lastTime = timestamp;
+
+        // Skip tiny frames (worker fires faster than needed)
+        if (dt < 0.001) return;
+
+        try {
+            this.updateFn(dt);
+            this.renderFn();
+        } catch (e) {
+            console.error('Game loop error:', e);
+        }
+
+        // If no worker, schedule next via rAF
+        if (!this._workerTimer) {
+            requestAnimationFrame(this._tick);
+        }
+    }
+};
+
+// ===== js/renderer.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Renderer = {
+    // Draw creature face (eyes + mouth) centered in given rect
+    drawFace(ctx, cx, cy, w, h, opts = {}) {
+        const {
+            blinkPhase = 0,    // 0-1, 1 = fully blinked
+            mouthOpen = 0,     // 0-1
+            angry = false,
+            color = '#fff',
+            scale = 1,
+        } = opts;
+
+        const eyeSpacing = w * 0.22 * scale;
+        const eyeY = cy - h * 0.08 * scale;
+        const eyeRadius = w * 0.08 * scale;
+        const mouthY = cy + h * 0.18 * scale;
+
+        // Eyes
+        ctx.fillStyle = color;
+        const eyeH = eyeRadius * 2 * (1 - blinkPhase * 0.9);
+        // Left eye
+        ctx.beginPath();
+        ctx.ellipse(cx - eyeSpacing, eyeY, eyeRadius, Math.max(eyeH / 2, 0.5), 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Right eye
+        ctx.beginPath();
+        ctx.ellipse(cx + eyeSpacing, eyeY, eyeRadius, Math.max(eyeH / 2, 0.5), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupils (small dark circles)
+        if (blinkPhase < 0.7) {
+            ctx.fillStyle = '#1a1a2e';
+            const pupilR = eyeRadius * 0.5;
+            ctx.beginPath();
+            ctx.arc(cx - eyeSpacing, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx + eyeSpacing, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Eyebrows when angry
+        if (angry) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2 * scale;
+            ctx.beginPath();
+            ctx.moveTo(cx - eyeSpacing - eyeRadius, eyeY - eyeRadius * 1.5);
+            ctx.lineTo(cx - eyeSpacing + eyeRadius, eyeY - eyeRadius * 0.8);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx + eyeSpacing + eyeRadius, eyeY - eyeRadius * 1.5);
+            ctx.lineTo(cx + eyeSpacing - eyeRadius, eyeY - eyeRadius * 0.8);
+            ctx.stroke();
+        }
+
+        // Mouth
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5 * scale;
+        const mouthW = w * 0.2 * scale;
+        if (mouthOpen > 0.1) {
+            // Open mouth — ellipse
+            ctx.fillStyle = angry ? '#440000' : '#2a0a3a';
+            ctx.beginPath();
+            ctx.ellipse(cx, mouthY, mouthW, mouthW * 0.6 * mouthOpen, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        } else {
+            // Closed mouth — smile or frown
+            ctx.beginPath();
+            if (angry) {
+                ctx.arc(cx, mouthY + mouthW * 0.5, mouthW, -Math.PI * 0.8, -Math.PI * 0.2);
+            } else {
+                ctx.arc(cx, mouthY - mouthW * 0.3, mouthW, Math.PI * 0.2, Math.PI * 0.8);
+            }
+            ctx.stroke();
+        }
+    },
+
+    // Glow effect around a point
+    drawGlow(ctx, x, y, radius, color, alpha = 0.3) {
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        grad.addColorStop(0, color.replace(')', `,${alpha})`).replace('rgb', 'rgba'));
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    },
+
+    // Draw a glowing ball
+    drawBall(ctx, x, y, radius) {
+        // Glow
+        ctx.fillStyle = NJOX.COLORS.BALL_GLOW;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Core
+        ctx.fillStyle = NJOX.COLORS.BALL;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    },
+
+    // Draw background gradient
+    drawBackground(ctx, w, h) {
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, NJOX.COLORS.BG_GRADIENT_TOP);
+        grad.addColorStop(1, NJOX.COLORS.BG_GRADIENT_BOT);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+    },
+
+    // Screen shake helper
+    shakeOffset: { x: 0, y: 0 },
+    shakeTimer: 0,
+    shakeIntensity: 0,
+
+    triggerShake(intensity = 5, duration = 0.2) {
+        this.shakeIntensity = intensity;
+        this.shakeTimer = duration;
+    },
+
+    updateShake(dt) {
+        if (this.shakeTimer > 0) {
+            this.shakeTimer -= dt;
+            this.shakeOffset.x = (Math.random() - 0.5) * 2 * this.shakeIntensity;
+            this.shakeOffset.y = (Math.random() - 0.5) * 2 * this.shakeIntensity;
+            if (this.shakeTimer <= 0) {
+                this.shakeOffset.x = 0;
+                this.shakeOffset.y = 0;
+            }
+        }
+    }
+};
+
+// ===== js/input.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Input = class Input {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.aimAngle = -Math.PI / 2; // straight up
+        this.isAiming = false;
+        this.launchRequested = false;
+        this.mouseX = 0;
+        this.mouseY = 0;
+
+        // Launch origin — where balls come from (bottom center)
+        this.launchX = NJOX.CANVAS_W / 2;
+        this.launchY = NJOX.FLOOR_Y;
+
+        this._onDown = this._onDown.bind(this);
+        this._onMove = this._onMove.bind(this);
+        this._onUp = this._onUp.bind(this);
+
+        canvas.addEventListener('mousedown', this._onDown);
+        canvas.addEventListener('mousemove', this._onMove);
+        canvas.addEventListener('mouseup', this._onUp);
+        canvas.addEventListener('touchstart', this._onDown, { passive: false });
+        canvas.addEventListener('touchmove', this._onMove, { passive: false });
+        canvas.addEventListener('touchend', this._onUp);
+    }
+
+    _getPos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = NJOX.CANVAS_W / rect.width;
+        const scaleY = NJOX.CANVAS_H / rect.height;
+        if (e.touches) {
+            return {
+                x: (e.touches[0].clientX - rect.left) * scaleX,
+                y: (e.touches[0].clientY - rect.top) * scaleY
+            };
+        }
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+
+    _onDown(e) {
+        e.preventDefault();
+        const pos = this._getPos(e);
+        this.mouseX = pos.x;
+        this.mouseY = pos.y;
+        this.isAiming = true;
+        this._updateAngle();
+    }
+
+    _onMove(e) {
+        e.preventDefault();
+        if (!this.isAiming) return;
+        const pos = this._getPos(e);
+        this.mouseX = pos.x;
+        this.mouseY = pos.y;
+        this._updateAngle();
+    }
+
+    _onUp(e) {
+        if (this.isAiming) {
+            this.launchRequested = true;
+        }
+        this.isAiming = false;
+    }
+
+    _updateAngle() {
+        const dx = this.mouseX - this.launchX;
+        const dy = this.mouseY - this.launchY;
+        let angle = Math.atan2(dy, dx);
+        // Clamp to upward direction (between -170 and -10 degrees)
+        const minAngle = -Math.PI * 0.95;
+        const maxAngle = -Math.PI * 0.05;
+        angle = NJOX.Utils.clamp(angle, minAngle, maxAngle);
+        this.aimAngle = angle;
+    }
+
+    consumeLaunch() {
+        if (this.launchRequested) {
+            this.launchRequested = false;
+            return true;
+        }
+        return false;
+    }
+
+    // Update launch origin (set to where first ball landed last turn)
+    setLaunchOrigin(x) {
+        this.launchX = NJOX.Utils.clamp(x, NJOX.BALL_RADIUS, NJOX.CANVAS_W - NJOX.BALL_RADIUS);
+        this.launchY = NJOX.FLOOR_Y;
+    }
+};
+
+// ===== js/physics.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Physics = {
+    accumulator: 0,
+
+    // Main physics update with fixed timestep
+    update(dt, ballManager, creatures, onCreatureHit) {
+        this.accumulator += dt;
+        while (this.accumulator >= NJOX.PHYSICS_STEP) {
+            this._step(NJOX.PHYSICS_STEP, ballManager, creatures, onCreatureHit);
+            this.accumulator -= NJOX.PHYSICS_STEP;
+        }
+    },
+
+    reset() {
+        this.accumulator = 0;
+    },
+
+    _step(dt, ballManager, creatures, onCreatureHit) {
+        for (const ball of ballManager.balls) {
+            if (!ball.active) continue;
+
+            ball.x += ball.vx * dt;
+            ball.y += ball.vy * dt;
+
+            // Wall bounces
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.vx = Math.abs(ball.vx);
+            } else if (ball.x + ball.radius > NJOX.CANVAS_W) {
+                ball.x = NJOX.CANVAS_W - ball.radius;
+                ball.vx = -Math.abs(ball.vx);
+            }
+
+            // Ceiling bounce
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy = Math.abs(ball.vy);
+            }
+
+            // Floor — ball returns (only when moving downward)
+            if (ball.vy > 0 && ball.y + ball.radius > NJOX.FLOOR_Y) {
+                ball.y = NJOX.FLOOR_Y;
+                ball.active = false;
+                ballManager.onBallLand(ball);
+                continue;
+            }
+
+            // Creature collisions
+            for (let i = creatures.length - 1; i >= 0; i--) {
+                const c = creatures[i];
+                if (!c.alive) continue;
+
+                const col = NJOX.Utils.circleVsRect(
+                    ball.x, ball.y, ball.radius,
+                    c.x, c.y, c.w, c.h
+                );
+
+                if (!col) continue;
+
+                // Hit the creature — apply ball type modifier
+                const baseDmg = ballManager.getDamage();
+                const ballDmg = ball.getDamageMultiplier ? ball.getDamageMultiplier() : 1;
+                const result = c.onHit(ball, col.face, baseDmg * ballDmg);
+
+                // Ice effect: freeze creature
+                if (ball.type === 'ice' && c.alive) {
+                    c.frozen = true;
+                }
+
+                if (result && result.absorbed) {
+                    // Ball gets absorbed
+                    ball.active = false;
+                    ballManager.onBallLand(ball);
+                } else if (!ball.pierce) {
+                    // Reflect ball
+                    ball.x += col.nx * col.overlap;
+                    ball.y += col.ny * col.overlap;
+                    // Reflect velocity
+                    const dot = NJOX.Utils.dot(ball.vx, ball.vy, col.nx, col.ny);
+                    ball.vx -= 2 * dot * col.nx;
+                    ball.vy -= 2 * dot * col.ny;
+                } else {
+                    // Pierce — just separate without reflecting
+                    ball.x += col.nx * col.overlap;
+                    ball.y += col.ny * col.overlap;
+                }
+
+                // Callback for hit effects
+                if (onCreatureHit) {
+                    onCreatureHit(c, col, ball);
+                }
+
+                // Only hit one creature per step per ball (avoid multi-hit glitches)
+                if (!ball.pierce) break;
+            }
+
+            // Ensure speed stays constant (correct floating point drift)
+            const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+            if (speed > 0 && Math.abs(speed - NJOX.BALL_SPEED) > 1) {
+                const ratio = NJOX.BALL_SPEED / speed;
+                ball.vx *= ratio;
+                ball.vy *= ratio;
+            }
+        }
+    }
+};
+
+// ===== js/entities/ball.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Ball = class Ball {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.radius = NJOX.BALL_RADIUS;
+        this.active = false;
+        this.pierce = false;
+        this.type = 'normal'; // 'normal', 'fire', 'ice'
+        this.trail = [];
+    }
+
+    launch(angle) {
+        this.vx = Math.cos(angle) * NJOX.BALL_SPEED;
+        this.vy = Math.sin(angle) * NJOX.BALL_SPEED;
+        this.active = true;
+        this.trail = [];
+    }
+
+    getDamageMultiplier() {
+        if (this.type === 'fire') return 3;
+        return 1;
+    }
+
+    update(dt) {
+        if (!this.active) return;
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > 5) this.trail.shift();
+    }
+
+    render(ctx) {
+        if (!this.active) return;
+
+        // Trail color based on type
+        const trailColor = this.type === 'fire' ? '255,80,50'
+            : this.type === 'ice' ? '130,220,255'
+            : '255,255,255';
+
+        for (let i = 0; i < this.trail.length; i++) {
+            const alpha = (i / this.trail.length) * 0.3;
+            const r = this.radius * (0.3 + 0.7 * i / this.trail.length);
+            ctx.fillStyle = `rgba(${trailColor},${alpha})`;
+            ctx.beginPath();
+            ctx.arc(this.trail[i].x, this.trail[i].y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Ball color based on type
+        if (this.type === 'fire') {
+            ctx.fillStyle = 'rgba(255,80,50,0.3)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = NJOX.COLORS.FIRE;
+        } else if (this.type === 'ice') {
+            ctx.fillStyle = 'rgba(130,220,255,0.3)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = NJOX.COLORS.ICE;
+        } else {
+            ctx.fillStyle = NJOX.COLORS.BALL_GLOW;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = NJOX.COLORS.BALL;
+        }
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (this.pierce) {
+            ctx.strokeStyle = '#ff0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+};
+
+// ===== js/entities/ball-manager.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.BallManager = class BallManager {
+    constructor() {
+        this.balls = [];
+        this.totalCount = NJOX.INITIAL_BALLS;
+        this.launchQueue = 0;
+        this.launchTimer = 0;
+        this.launchAngle = 0;
+        this.launchX = NJOX.CANVAS_W / 2;
+        this.launching = false;
+        this.firstLandX = null;
+
+        // Power-ups
+        this.pierceActive = false;
+        this.doubleDamage = false;
+
+        // Ball modifiers queue: [{type: 'fire', remaining: 5}, ...]
+        this.modifierQueue = [];
+    }
+
+    // Queue a modifier for the next N balls
+    queueModifier(type, count) {
+        this.modifierQueue.push({ type, remaining: count });
+    }
+
+    // Get the next ball type from modifier queue
+    _consumeModifier() {
+        if (this.modifierQueue.length === 0) return 'normal';
+        const mod = this.modifierQueue[0];
+        mod.remaining--;
+        const type = mod.type;
+        if (mod.remaining <= 0) this.modifierQueue.shift();
+        return type;
+    }
+
+    startLaunch(angle, originX) {
+        this.launchAngle = angle;
+        this.launchX = originX;
+        this.launchQueue = this.totalCount;
+        this.launchTimer = 0;
+        this.launching = true;
+        this.firstLandX = null;
+        this.balls = [];
+    }
+
+    update(dt) {
+        if (this.launching && this.launchQueue > 0) {
+            this.launchTimer -= dt;
+            if (this.launchTimer <= 0) {
+                const ball = new NJOX.Ball(this.launchX, NJOX.FLOOR_Y);
+                ball.launch(this.launchAngle);
+                ball.type = this._consumeModifier();
+                if (this.pierceActive) ball.pierce = true;
+                this.balls.push(ball);
+                this.launchQueue--;
+                this.launchTimer = NJOX.LAUNCH_INTERVAL;
+                if (this.launchQueue <= 0) {
+                    this.launching = false;
+                }
+            }
+        }
+
+        for (const ball of this.balls) {
+            ball.update(dt);
+        }
+    }
+
+    render(ctx) {
+        for (const ball of this.balls) {
+            ball.render(ctx);
+        }
+
+        if (this.allReturned() && !this.launching) {
+            ctx.fillStyle = NJOX.COLORS.BALL;
+            ctx.beginPath();
+            ctx.arc(this.launchX, NJOX.FLOOR_Y, NJOX.BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    allReturned() {
+        if (this.launching) return false;
+        return this.balls.every(b => !b.active);
+    }
+
+    activeCount() {
+        return this.balls.filter(b => b.active).length;
+    }
+
+    onBallLand(ball) {
+        if (this.firstLandX === null) {
+            this.firstLandX = ball.x;
+        }
+    }
+
+    addBalls(count) {
+        this.totalCount += count;
+    }
+
+    resetPowerUps() {
+        this.pierceActive = false;
+        this.doubleDamage = false;
+    }
+
+    getDamage() {
+        return this.doubleDamage ? 2 : 1;
+    }
+};
+
+// ===== js/entities/creature.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Creature = class Creature {
+    constructor(x, y, hp, type) {
+        this.x = x;
+        this.y = y;
+        this.w = NJOX.CELL_SIZE - 4;
+        this.h = NJOX.CELL_SIZE - 4;
+        this.hp = hp;
+        this.maxHp = hp;
+        this.type = type || NJOX.CREATURE_TYPES.BASIC;
+        this.alive = true;
+
+        // Animation
+        this.animState = 'idle'; // idle, hit, death
+        this.hitFlashTimer = 0;
+        this.deathTimer = 0;
+        this.facePhase = Math.random() * Math.PI * 2;
+        this.blinkTimer = Math.random() * 3;
+        this.blinkState = 0; // 0 = open, ramps to 1 = closed
+        this.swayPhase = Math.random() * Math.PI * 2;
+        this.breathPhase = Math.random() * Math.PI * 2;
+
+        // Drift
+        this.originX = x;
+        this.driftDir = Math.random() > 0.5 ? 1 : -1;
+        this.driftSpeed = 0;
+        this.driftRange = 0;
+
+        // Frozen state (ice ball)
+        this.frozen = false;
+
+        // Target position for row advancement (smooth movement)
+        this.targetY = y;
+    }
+
+    update(dt) {
+        // Blink cycle
+        this.blinkTimer -= dt;
+        if (this.blinkTimer <= 0) {
+            this.blinkState = 1;
+            this.blinkTimer = 2 + Math.random() * 3;
+        }
+        if (this.blinkState > 0) {
+            this.blinkState -= dt * 8;
+            if (this.blinkState < 0) this.blinkState = 0;
+        }
+
+        // Sway animation
+        this.swayPhase += dt * 1.5;
+        this.breathPhase += dt * 2;
+
+        // Hit flash decay
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= dt;
+            if (this.hitFlashTimer <= 0) {
+                this.animState = 'idle';
+            }
+        }
+
+        // Death animation
+        if (this.animState === 'death') {
+            this.deathTimer -= dt;
+            if (this.deathTimer <= 0) {
+                this.alive = false;
+            }
+        }
+
+        // Drift movement
+        if (this.driftSpeed > 0 && this.animState !== 'death') {
+            this.x += this.driftDir * this.driftSpeed * dt;
+            if (Math.abs(this.x - this.originX) > this.driftRange) {
+                this.driftDir *= -1;
+                this.x = this.originX + this.driftDir * this.driftRange;
+            }
+            // Keep within bounds
+            this.x = NJOX.Utils.clamp(this.x, 0, NJOX.CANVAS_W - this.w);
+        }
+
+        // Smooth row advancement
+        if (Math.abs(this.y - this.targetY) > 0.5) {
+            this.y = NJOX.Utils.lerp(this.y, this.targetY, dt * 8);
+        } else {
+            this.y = this.targetY;
+        }
+    }
+
+    onHit(ball, face, damageMultiplier = 1) {
+        if (!this.alive) return null;
+
+        const damage = 1 * damageMultiplier;
+        this.hp -= damage;
+        this.hitFlashTimer = 0.12;
+        this.animState = 'hit';
+
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.alive = false;
+            this.animState = 'death';
+            this.deathTimer = 0.3;
+            return { absorbed: false, killed: true, spawns: this.onDeath() };
+        }
+
+        return { absorbed: false, killed: false };
+    }
+
+    onDeath() {
+        // Override in subclasses to spawn new creatures
+        return [];
+    }
+
+    advanceRow() {
+        if (this.frozen) {
+            this.frozen = false; // thaw — skip this advance
+            return;
+        }
+        this.targetY += NJOX.CELL_SIZE * (NJOX.ROW_ADVANCE || 0.5);
+        this.originX = this.x;
+    }
+
+    getColor() {
+        return NJOX.COLORS.BASIC;
+    }
+
+    render(ctx) {
+        if (!this.alive && this.animState !== 'death') return;
+
+        const color = this.getColor();
+
+        ctx.save();
+
+        // Death animation — shrink and fade
+        if (this.animState === 'death') {
+            const t = this.deathTimer / 0.3;
+            ctx.globalAlpha = t;
+            const cx = this.x + this.w / 2;
+            const cy = this.y + this.h / 2;
+            ctx.translate(cx, cy);
+            ctx.scale(t, t);
+            ctx.translate(-cx, -cy);
+        }
+
+        // Breath scale (subtle to avoid jitter between adjacent creatures)
+        const breathScale = 1 + Math.sin(this.breathPhase) * 0.008;
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+
+        ctx.translate(cx, cy);
+        ctx.scale(breathScale, breathScale);
+        // Sway (very subtle)
+        ctx.rotate(Math.sin(this.swayPhase) * 0.01);
+        ctx.translate(-cx, -cy);
+
+        // Body
+        if (this.hitFlashTimer > 0) {
+            ctx.fillStyle = '#fff';
+        } else {
+            ctx.fillStyle = color;
+        }
+        NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 8);
+        ctx.fill();
+
+        // Body border
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Face
+        NJOX.Renderer.drawFace(ctx, cx, cy, this.w, this.h, {
+            blinkPhase: this.blinkState,
+            mouthOpen: this.animState === 'hit' ? 0.5 : 0,
+            angry: this.hp < this.maxHp * 0.3,
+            color: '#fff',
+            scale: 1,
+        });
+
+        // HP number
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.ceil(this.hp), cx, this.y + this.h - 2);
+
+        // Frozen overlay
+        if (this.frozen) {
+            ctx.fillStyle = 'rgba(130,220,255,0.3)';
+            NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 8);
+            ctx.fill();
+            ctx.strokeStyle = NJOX.COLORS.ICE;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    // Type label for HUD
+    getLabel() {
+        return 'Monster';
+    }
+
+    getIcon() {
+        return this.getColor();
+    }
+};
+
+// ===== js/entities/basic-monster.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.BasicMonster = class BasicMonster extends NJOX.Creature {
+    constructor(x, y, hp) {
+        super(x, y, hp, NJOX.CREATURE_TYPES.BASIC);
+    }
+
+    getColor() {
+        return NJOX.COLORS.BASIC;
+    }
+
+    getLabel() {
+        return 'Slack Monster';
+    }
+};
+
+// ===== js/entities/splitter.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Splitter = class Splitter extends NJOX.Creature {
+    constructor(x, y, hp) {
+        super(x, y, hp, NJOX.CREATURE_TYPES.SPLITTER);
+    }
+
+    getColor() {
+        return NJOX.COLORS.SPLITTER;
+    }
+
+    getLabel() {
+        return 'Splitter';
+    }
+
+    onDeath() {
+        // Spawn 2 smaller basic monsters at flanking positions
+        const childHp = Math.max(1, Math.floor(this.maxHp * 0.4));
+        const halfW = this.w / 2;
+        const spawns = [];
+
+        // Left child
+        const lx = NJOX.Utils.clamp(this.x - halfW / 2, 0, NJOX.CANVAS_W - halfW - 4);
+        spawns.push(new NJOX.BasicMonster(lx, this.y, childHp));
+        spawns[0].w = halfW;
+        spawns[0].h = this.h * 0.7;
+        spawns[0].targetY = this.targetY;
+
+        // Right child
+        const rx = NJOX.Utils.clamp(this.x + this.w / 2 + 2, 0, NJOX.CANVAS_W - halfW - 4);
+        spawns.push(new NJOX.BasicMonster(rx, this.y, childHp));
+        spawns[1].w = halfW;
+        spawns[1].h = this.h * 0.7;
+        spawns[1].targetY = this.targetY;
+
+        return spawns;
+    }
+
+    render(ctx) {
+        super.render(ctx);
+        if (!this.alive && this.animState !== 'death') return;
+
+        // Visual indicator: vertical line down the middle
+        const cx = this.x + this.w / 2;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(cx, this.y + 4);
+        ctx.lineTo(cx, this.y + this.h - 4);
+        ctx.stroke();
+        ctx.restore();
+    }
+};
+
+// ===== js/entities/directional-eater.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.DirectionalEater = class DirectionalEater extends NJOX.Creature {
+    constructor(x, y, hp) {
+        super(x, y, hp, NJOX.CREATURE_TYPES.EATER);
+        this.mouthOpenAmount = 0;
+        this.absorbing = false;
+    }
+
+    getColor() {
+        return NJOX.COLORS.EATER;
+    }
+
+    getLabel() {
+        return 'Eater';
+    }
+
+    update(dt) {
+        super.update(dt);
+        // Animate mouth
+        if (this.absorbing) {
+            this.mouthOpenAmount = NJOX.Utils.lerp(this.mouthOpenAmount, 1, dt * 10);
+            this.absorbing = false; // reset each frame
+        } else {
+            this.mouthOpenAmount = NJOX.Utils.lerp(this.mouthOpenAmount, 0, dt * 5);
+        }
+    }
+
+    onHit(ball, face, damageMultiplier = 1) {
+        if (!this.alive) return null;
+
+        if (face === 'top') {
+            this.hp -= 0.5 * damageMultiplier;
+            this.absorbing = true;
+            this.hitFlashTimer = 0.08;
+            this.animState = 'hit';
+
+            if (this.hp <= 0) {
+                this.hp = 0;
+                this.alive = false;
+                this.animState = 'death';
+                this.deathTimer = 0.3;
+                return { absorbed: true, killed: true, spawns: this.onDeath() };
+            }
+            return { absorbed: true, killed: false };
+        } else {
+            const damage = 2 * damageMultiplier;
+            this.hp -= damage;
+            this.hitFlashTimer = 0.12;
+            this.animState = 'hit';
+
+            if (this.hp <= 0) {
+                this.hp = 0;
+                this.alive = false;
+                this.animState = 'death';
+                this.deathTimer = 0.3;
+                return { absorbed: false, killed: true, spawns: this.onDeath() };
+            }
+            return { absorbed: false, killed: false };
+        }
+    }
+
+    render(ctx) {
+        if (!this.alive && this.animState !== 'death') return;
+
+        const color = this.getColor();
+        ctx.save();
+
+        // Death animation
+        if (this.animState === 'death') {
+            const t = this.deathTimer / 0.3;
+            ctx.globalAlpha = t;
+            const cx = this.x + this.w / 2;
+            const cy = this.y + this.h / 2;
+            ctx.translate(cx, cy);
+            ctx.scale(t, t);
+            ctx.translate(-cx, -cy);
+        }
+
+        // Breath
+        const breathScale = 1 + Math.sin(this.breathPhase) * 0.008;
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+        ctx.translate(cx, cy);
+        ctx.scale(breathScale, breathScale);
+        ctx.rotate(Math.sin(this.swayPhase) * 0.01);
+        ctx.translate(-cx, -cy);
+
+        // Body
+        ctx.fillStyle = this.hitFlashTimer > 0 ? '#fff' : color;
+        NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 8);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Arrow indicator on top (front face)
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, this.y + 6);
+        ctx.lineTo(cx, this.y + 2);
+        ctx.lineTo(cx + 6, this.y + 6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Face with mouth open state
+        NJOX.Renderer.drawFace(ctx, cx, cy, this.w, this.h, {
+            blinkPhase: this.blinkState,
+            mouthOpen: Math.max(this.mouthOpenAmount, this.animState === 'hit' ? 0.3 : 0),
+            angry: this.hp < this.maxHp * 0.3,
+            color: '#fff',
+            scale: 1,
+        });
+
+        // HP number
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.ceil(this.hp), cx, this.y + this.h - 2);
+
+        ctx.restore();
+    }
+};
+
+// ===== js/entities/counter-creature.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.CounterCreature = class CounterCreature extends NJOX.Creature {
+    constructor(x, y, hp) {
+        super(x, y, hp, NJOX.CREATURE_TYPES.COUNTER);
+        this.driftSpeed = 20;
+        this.driftRange = 15;
+    }
+
+    getColor() {
+        return NJOX.COLORS.COUNTER;
+    }
+
+    getLabel() {
+        return 'Counter';
+    }
+
+    render(ctx) {
+        if (!this.alive && this.animState !== 'death') return;
+
+        const color = this.getColor();
+        ctx.save();
+
+        // Death animation
+        if (this.animState === 'death') {
+            const t = this.deathTimer / 0.3;
+            ctx.globalAlpha = t;
+            const ccx = this.x + this.w / 2;
+            const ccy = this.y + this.h / 2;
+            ctx.translate(ccx, ccy);
+            ctx.scale(t, t);
+            ctx.translate(-ccx, -ccy);
+        }
+
+        // Breath
+        const breathScale = 1 + Math.sin(this.breathPhase) * 0.008;
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+        ctx.translate(cx, cy);
+        ctx.scale(breathScale, breathScale);
+        ctx.rotate(Math.sin(this.swayPhase) * 0.01);
+        ctx.translate(-cx, -cy);
+
+        // Body
+        ctx.fillStyle = this.hitFlashTimer > 0 ? '#fff' : color;
+        NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 8);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Large hit counter in center
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.ceil(this.hp), cx, cy);
+
+        // Small eyes above the number
+        const eyeY = cy - 12;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(cx - 8, eyeY, 3, 0, Math.PI * 2);
+        ctx.arc(cx + 8, eyeY, 3, 0, Math.PI * 2);
+        ctx.fill();
+        // Pupils
+        ctx.fillStyle = '#1a1a2e';
+        ctx.beginPath();
+        ctx.arc(cx - 8, eyeY, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx + 8, eyeY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+};
+
+// ===== js/entities/reactive-creature.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.ReactiveCreature = class ReactiveCreature extends NJOX.Creature {
+    constructor(x, y, hp) {
+        super(x, y, hp, NJOX.CREATURE_TYPES.REACTIVE);
+        this.hitCount = 0;
+        this.mutationThreshold = 3;
+        this.mutated = false;
+        this.driftSpeed = 8;
+        this.driftRange = 10;
+    }
+
+    getColor() {
+        return this.mutated ? NJOX.COLORS.REACTIVE_MUTATED : NJOX.COLORS.REACTIVE;
+    }
+
+    getLabel() {
+        return 'Reactive';
+    }
+
+    onHit(ball, face, damageMultiplier = 1) {
+        if (this.animState === 'death') return null;
+
+        this.hitCount++;
+
+        // Check for mutation
+        if (!this.mutated && this.hitCount >= this.mutationThreshold) {
+            this.mutated = true;
+            this.driftSpeed *= 3;
+            this.driftRange *= 2;
+        }
+
+        return super.onHit(ball, face, damageMultiplier);
+    }
+
+    render(ctx) {
+        if (!this.alive && this.animState !== 'death') return;
+
+        const color = this.getColor();
+        ctx.save();
+
+        // Death animation
+        if (this.animState === 'death') {
+            const t = this.deathTimer / 0.3;
+            ctx.globalAlpha = t;
+            const ccx = this.x + this.w / 2;
+            const ccy = this.y + this.h / 2;
+            ctx.translate(ccx, ccy);
+            ctx.scale(t, t);
+            ctx.translate(-ccx, -ccy);
+        }
+
+        // Breath + mutation vibration
+        let breathScale = 1 + Math.sin(this.breathPhase) * 0.008;
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+        ctx.translate(cx, cy);
+        if (this.mutated) {
+            // Subtle vibrate when mutated
+            ctx.translate(
+                (Math.random() - 0.5) * 1,
+                (Math.random() - 0.5) * 1
+            );
+            breathScale += 0.01;
+        }
+        ctx.scale(breathScale, breathScale);
+        ctx.rotate(Math.sin(this.swayPhase) * (this.mutated ? 0.03 : 0.01));
+        ctx.translate(-cx, -cy);
+
+        // Body
+        ctx.fillStyle = this.hitFlashTimer > 0 ? '#fff' : color;
+        NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 8);
+        ctx.fill();
+
+        // Mutation glow
+        if (this.mutated) {
+            ctx.shadowColor = NJOX.COLORS.REACTIVE_MUTATED;
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = NJOX.COLORS.REACTIVE_MUTATED;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Face
+        NJOX.Renderer.drawFace(ctx, cx, cy, this.w, this.h, {
+            blinkPhase: this.blinkState,
+            mouthOpen: this.animState === 'hit' ? 0.5 : 0,
+            angry: this.mutated,
+            color: '#fff',
+            scale: 1,
+        });
+
+        // HP number
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.ceil(this.hp), cx, this.y + this.h - 2);
+
+        // Hit count indicator (small dots)
+        if (!this.mutated) {
+            for (let i = 0; i < this.hitCount; i++) {
+                ctx.fillStyle = NJOX.COLORS.REACTIVE_MUTATED;
+                ctx.beginPath();
+                ctx.arc(this.x + 6 + i * 6, this.y + 6, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        ctx.restore();
+    }
+};
+
+// ===== js/entities/boss.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Boss = class Boss extends NJOX.Creature {
+    constructor(level, name) {
+        const bossHp = 15; // dies in 15 hits
+        const x = (NJOX.CANVAS_W - 150) / 2;
+        const y = NJOX.GRID_TOP + 20;
+        super(x, y, bossHp, 'boss');
+        this.w = 150;
+        this.h = 120;
+        this.name = name || 'STRESS';
+        this.targetY = y;
+
+        // Phase system
+        this.phase = 1;
+        this.phaseThresholds = [0.66, 0.33];
+
+        // Boss mechanics
+        this.blackHole = null;
+        this.defenseOrbs = [];
+        this.defenseTimer = 5;
+        this.chest = null;
+        this.rage = false;
+
+        // Visual states
+        this.mouthOpen = 0;
+        this.mouthTarget = 0;
+        this.entranceTimer = 0;
+        this.attackFlashTimer = 0;
+        this.trackX = NJOX.CANVAS_W / 2;
+
+        // Initialize mechanics
+        this._initBlackHole();
+        this._initChest();
+    }
+
+    _initBlackHole() {
+        // Static object near boss that absorbs balls
+        const side = Math.random() > 0.5 ? 1 : -1;
+        this.blackHole = {
+            x: this.x + this.w / 2 + side * 100,
+            y: this.y + this.h / 2 + 30,
+            radius: 20,
+            pullRadius: 60,
+            active: true,
+            phase: 0, // animation phase
+        };
+        // Keep in bounds
+        this.blackHole.x = NJOX.Utils.clamp(this.blackHole.x, 40, NJOX.CANVAS_W - 40);
+    }
+
+    _initChest() {
+        // Treasure chest in a random top corner
+        const isLeft = Math.random() > 0.5;
+        this.chest = {
+            x: isLeft ? 20 : NJOX.CANVAS_W - 60,
+            y: NJOX.GRID_TOP + 10,
+            w: 40,
+            h: 35,
+            hp: 3,
+            alive: true,
+            goldReward: 50,
+            hitFlash: 0,
+        };
+    }
+
+    getColor() {
+        if (this.rage) return NJOX.COLORS.BOSS_RAGE;
+        if (this.phase === 3) return NJOX.COLORS.BOSS_PHASE3;
+        if (this.phase === 2) return NJOX.COLORS.BOSS_PHASE2;
+        return NJOX.COLORS.BOSS_PHASE1;
+    }
+
+    update(dt) {
+        if (this.entranceTimer > 0) {
+            this.entranceTimer -= dt;
+            return;
+        }
+
+        // Blink
+        this.blinkTimer -= dt;
+        if (this.blinkTimer <= 0) {
+            this.blinkState = 1;
+            this.blinkTimer = 1.5 + Math.random() * 2;
+        }
+        if (this.blinkState > 0) {
+            this.blinkState -= dt * 8;
+            if (this.blinkState < 0) this.blinkState = 0;
+        }
+
+        this.swayPhase += dt * 1.2;
+        this.breathPhase += dt * 1.5;
+
+        if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
+
+        // Mouth animation
+        this.mouthOpen = NJOX.Utils.lerp(this.mouthOpen, this.mouthTarget, dt * 8);
+        if (this.mouthTarget > 0) this.mouthTarget = Math.max(0, this.mouthTarget - dt * 2);
+
+        // Phase check
+        const hpRatio = this.hp / this.maxHp;
+        if (this.phase === 1 && hpRatio <= this.phaseThresholds[0]) {
+            this.phase = 2;
+            this.mouthTarget = 1;
+        } else if (this.phase === 2 && hpRatio <= this.phaseThresholds[1]) {
+            this.phase = 3;
+            this.rage = true;
+            this.mouthTarget = 1;
+        }
+
+        // Black hole animation
+        if (this.blackHole && this.blackHole.active) {
+            this.blackHole.phase += dt * 3;
+        }
+
+        // Defense ring timer
+        this.defenseTimer -= dt;
+        if (this.defenseTimer <= 0 && this.animState !== 'death') {
+            this._emitDefenseOrbs();
+            this.defenseTimer = 5 - this.phase * 0.5; // faster in later phases
+        }
+
+        // Update defense orbs
+        for (let i = this.defenseOrbs.length - 1; i >= 0; i--) {
+            const orb = this.defenseOrbs[i];
+            orb.x += orb.vx * dt;
+            orb.y += orb.vy * dt;
+            orb.life -= dt;
+            if (orb.life <= 0 || orb.x < -20 || orb.x > NJOX.CANVAS_W + 20 ||
+                orb.y < -20 || orb.y > NJOX.FLOOR_Y + 20) {
+                this.defenseOrbs.splice(i, 1);
+            }
+        }
+
+        // Chest hit flash
+        if (this.chest && this.chest.hitFlash > 0) {
+            this.chest.hitFlash -= dt;
+        }
+
+        // Smooth row advancement (from creature base)
+        if (Math.abs(this.y - this.targetY) > 0.5) {
+            this.y = NJOX.Utils.lerp(this.y, this.targetY, dt * 8);
+        }
+    }
+
+    _emitDefenseOrbs() {
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+        const count = 8 + this.phase * 4; // 12, 16, 20 orbs
+        const speed = 120 + this.phase * 30;
+
+        this.mouthTarget = 0.6;
+        this.attackFlashTimer = 0.2;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            this.defenseOrbs.push({
+                x: cx,
+                y: cy,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: 5,
+                life: 2.5,
+            });
+        }
+    }
+
+    onHit(ball, face, damageMultiplier = 1) {
+        if (!this.alive) return null;
+        this.hitFlashTimer = 0.1;
+        this.mouthTarget = 0.4;
+        this.hp -= 1; // always 1 damage per hit
+
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.alive = false;
+            this.animState = 'death';
+            this.deathTimer = 1.0;
+            return { absorbed: false, killed: true, spawns: [] };
+        }
+        return { absorbed: false, killed: false };
+    }
+
+    // Check if balls interact with boss mechanics
+    checkMechanics(balls, game) {
+        // Black hole: absorb nearby balls
+        if (this.blackHole && this.blackHole.active) {
+            for (const ball of balls) {
+                if (!ball.active) continue;
+                const dist = NJOX.Utils.distance(ball.x, ball.y, this.blackHole.x, this.blackHole.y);
+
+                // Pull effect (slow down balls near black hole)
+                if (dist < this.blackHole.pullRadius) {
+                    const pullStrength = 0.98;
+                    ball.vx *= pullStrength;
+                    ball.vy *= pullStrength;
+                }
+
+                // Absorb
+                if (dist < this.blackHole.radius + ball.radius) {
+                    ball.active = false;
+                }
+            }
+        }
+
+        // Defense orbs: destroy balls on contact
+        for (const orb of this.defenseOrbs) {
+            for (const ball of balls) {
+                if (!ball.active) continue;
+                const dist = NJOX.Utils.distance(ball.x, ball.y, orb.x, orb.y);
+                if (dist < orb.radius + ball.radius) {
+                    ball.active = false;
+                }
+            }
+        }
+
+        // Rage mode: randomize ball direction on bounce
+        if (this.rage) {
+            for (const ball of balls) {
+                if (!ball.active) continue;
+                // Small random perturbation each frame
+                ball.vx += (Math.random() - 0.5) * 8;
+                ball.vy += (Math.random() - 0.5) * 8;
+                // Re-normalize speed
+                const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                if (speed > 0) {
+                    ball.vx = (ball.vx / speed) * NJOX.BALL_SPEED;
+                    ball.vy = (ball.vy / speed) * NJOX.BALL_SPEED;
+                }
+            }
+        }
+
+        // Chest: check ball collision
+        if (this.chest && this.chest.alive) {
+            for (const ball of balls) {
+                if (!ball.active) continue;
+                const col = NJOX.Utils.circleVsRect(
+                    ball.x, ball.y, ball.radius,
+                    this.chest.x, this.chest.y, this.chest.w, this.chest.h
+                );
+                if (col) {
+                    this.chest.hp--;
+                    this.chest.hitFlash = 0.1;
+                    if (this.chest.hp <= 0) {
+                        this.chest.alive = false;
+                        game.gold += this.chest.goldReward;
+                        game.collectibles.push({
+                            x: this.chest.x + this.chest.w / 2,
+                            y: this.chest.y,
+                            type: 'gold',
+                            amount: this.chest.goldReward,
+                            timer: 2.0,
+                        });
+                    }
+                    // Bounce ball off chest
+                    if (col.nx !== undefined) {
+                        ball.x += col.nx * col.overlap;
+                        ball.y += col.ny * col.overlap;
+                        const dot = NJOX.Utils.dot(ball.vx, ball.vy, col.nx, col.ny);
+                        ball.vx -= 2 * dot * col.nx;
+                        ball.vy -= 2 * dot * col.ny;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    render(ctx) {
+        if (!this.alive && this.animState !== 'death') return;
+
+        const color = this.getColor();
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+
+        ctx.save();
+
+        // Death animation
+        if (this.animState === 'death') {
+            const t = this.deathTimer / 1.0;
+            ctx.globalAlpha = t;
+            ctx.translate(cx, cy);
+            ctx.scale(1 + (1 - t) * 0.3, 1 + (1 - t) * 0.3);
+            ctx.rotate((1 - t) * 0.3);
+            ctx.translate(-cx, -cy);
+        }
+
+        // Entrance
+        if (this.entranceTimer > 0) {
+            const t = this.entranceTimer / 1.0;
+            ctx.globalAlpha = 1 - t;
+            ctx.translate(0, -100 * t);
+        }
+
+        // Breath
+        const breathScale = 1 + Math.sin(this.breathPhase) * 0.015;
+        ctx.translate(cx, cy);
+        ctx.scale(breathScale, breathScale);
+        ctx.rotate(Math.sin(this.swayPhase) * 0.02);
+        ctx.translate(-cx, -cy);
+
+        // Rage glow
+        if (this.rage) {
+            ctx.shadowColor = NJOX.COLORS.BOSS_RAGE;
+            ctx.shadowBlur = 20 + Math.sin(this.swayPhase * 3) * 10;
+        }
+
+        // Body
+        ctx.fillStyle = this.hitFlashTimer > 0 ? '#fff' : color;
+        NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 16);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Border
+        ctx.strokeStyle = this.rage ? NJOX.COLORS.BOSS_RAGE : 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = this.rage ? 3 : 2;
+        ctx.stroke();
+
+        // Attack flash
+        if (this.attackFlashTimer > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${this.attackFlashTimer})`;
+            NJOX.Utils.roundRect(ctx, this.x, this.y, this.w, this.h, 16);
+            ctx.fill();
+        }
+
+        // Eyes with tracking
+        const eyeSpacing = this.w * 0.18;
+        const eyeY = cy - this.h * 0.1;
+        const eyeR = 8;
+        const lookDx = NJOX.Utils.clamp((this.trackX - cx) / 200, -1, 1);
+
+        ctx.fillStyle = '#fff';
+        const eyeH = eyeR * 2 * (1 - this.blinkState * 0.9);
+        ctx.beginPath();
+        ctx.ellipse(cx - eyeSpacing, eyeY, eyeR, Math.max(eyeH / 2, 1), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + eyeSpacing, eyeY, eyeR, Math.max(eyeH / 2, 1), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (this.blinkState < 0.7) {
+            ctx.fillStyle = this.rage ? '#ff0033' : '#1a1a2e';
+            const pupilR = eyeR * 0.55;
+            ctx.beginPath();
+            ctx.arc(cx - eyeSpacing + lookDx * 3, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx + eyeSpacing + lookDx * 3, eyeY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Angry eyebrows
+        if (this.rage || this.phase >= 2) {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(cx - eyeSpacing - eyeR, eyeY - eyeR * 1.8);
+            ctx.lineTo(cx - eyeSpacing + eyeR, eyeY - eyeR * 1.1);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx + eyeSpacing + eyeR, eyeY - eyeR * 1.8);
+            ctx.lineTo(cx + eyeSpacing - eyeR, eyeY - eyeR * 1.1);
+            ctx.stroke();
+        }
+
+        // Mouth
+        const mouthY = cy + this.h * 0.2;
+        const mouthW = this.w * 0.25;
+        if (this.mouthOpen > 0.1) {
+            ctx.fillStyle = '#2a0000';
+            ctx.beginPath();
+            ctx.ellipse(cx, mouthY, mouthW, mouthW * 0.7 * this.mouthOpen, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            if (this.mouthOpen > 0.3) {
+                ctx.fillStyle = '#fff';
+                const teethY = mouthY - mouthW * 0.5 * this.mouthOpen;
+                for (let i = -2; i <= 2; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + i * 8 - 3, teethY);
+                    ctx.lineTo(cx + i * 8, teethY + 5);
+                    ctx.lineTo(cx + i * 8 + 3, teethY);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+        } else {
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, mouthY + mouthW * 0.3, mouthW, -Math.PI * 0.8, -Math.PI * 0.2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // === Render boss mechanics ===
+
+        // Black hole
+        if (this.blackHole && this.blackHole.active) {
+            const bh = this.blackHole;
+            ctx.save();
+            // Swirl effect
+            const gradient = ctx.createRadialGradient(bh.x, bh.y, 0, bh.x, bh.y, bh.radius * 2);
+            gradient.addColorStop(0, 'rgba(30,0,60,0.9)');
+            gradient.addColorStop(0.5, 'rgba(80,0,120,0.4)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(bh.x, bh.y, bh.radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core
+            ctx.fillStyle = '#0a0020';
+            ctx.beginPath();
+            ctx.arc(bh.x, bh.y, bh.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spinning ring
+            ctx.strokeStyle = 'rgba(180,80,255,0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(bh.x, bh.y, bh.radius + 5 + Math.sin(bh.phase) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // Defense orbs
+        for (const orb of this.defenseOrbs) {
+            ctx.save();
+            ctx.fillStyle = this.phase === 3 ? '#ff4444' : this.phase === 2 ? '#ffaa00' : '#44aaff';
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Treasure chest
+        if (this.chest && this.chest.alive) {
+            const ch = this.chest;
+            ctx.save();
+            // Chest body
+            ctx.fillStyle = ch.hitFlash > 0 ? '#fff' : '#8B4513';
+            NJOX.Utils.roundRect(ctx, ch.x, ch.y, ch.w, ch.h, 4);
+            ctx.fill();
+            // Gold stripe
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(ch.x + 2, ch.y + ch.h * 0.4, ch.w - 4, 6);
+            // Lock
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(ch.x + ch.w / 2, ch.y + ch.h * 0.5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            // HP
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(ch.hp, ch.x + ch.w / 2, ch.y + ch.h - 8);
+            ctx.restore();
+        }
+    }
+};
+
+// ===== js/systems/particle-system.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Particle = class Particle {
+    constructor(x, y, vx, vy, life, color, size) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.life = life;
+        this.maxLife = life;
+        this.color = color;
+        this.size = size;
+        this.alive = true;
+    }
+};
+
+NJOX.ParticleSystem = class ParticleSystem {
+    constructor() {
+        this.particles = [];
+    }
+
+    // Emit a burst of particles
+    emit(x, y, count, color, opts = {}) {
+        const {
+            speedMin = 50,
+            speedMax = 200,
+            sizeMin = 2,
+            sizeMax = 5,
+            lifeMin = 0.3,
+            lifeMax = 0.8,
+            angleMin = 0,
+            angleMax = Math.PI * 2,
+            gravity = 100,
+        } = opts;
+
+        for (let i = 0; i < count; i++) {
+            const angle = NJOX.Utils.randFloat(angleMin, angleMax);
+            const speed = NJOX.Utils.randFloat(speedMin, speedMax);
+            const size = NJOX.Utils.randFloat(sizeMin, sizeMax);
+            const life = NJOX.Utils.randFloat(lifeMin, lifeMax);
+
+            const p = new NJOX.Particle(
+                x, y,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                life, color, size
+            );
+            p.gravity = gravity;
+            this.particles.push(p);
+        }
+    }
+
+    // Emit hit sparks (directional)
+    emitHitSparks(x, y, nx, ny, color) {
+        const baseAngle = Math.atan2(ny, nx);
+        this.emit(x, y, 6, color, {
+            speedMin: 80,
+            speedMax: 250,
+            sizeMin: 1.5,
+            sizeMax: 3.5,
+            lifeMin: 0.15,
+            lifeMax: 0.4,
+            angleMin: baseAngle - 0.8,
+            angleMax: baseAngle + 0.8,
+            gravity: 50,
+        });
+    }
+
+    // Emit death burst
+    emitDeathBurst(x, y, w, h, color) {
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        this.emit(cx, cy, 20, color, {
+            speedMin: 60,
+            speedMax: 300,
+            sizeMin: 2,
+            sizeMax: 6,
+            lifeMin: 0.3,
+            lifeMax: 0.7,
+            gravity: 80,
+        });
+    }
+
+    update(dt) {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.vy += (p.gravity || 100) * dt;
+            p.life -= dt;
+            if (p.life <= 0) {
+                p.alive = false;
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+
+    render(ctx) {
+        for (const p of this.particles) {
+            const alpha = (p.life / p.maxLife);
+            const size = p.size * alpha;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    clear() {
+        this.particles = [];
+    }
+};
+
+// ===== js/systems/level-manager.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.LevelManager = class LevelManager {
+    constructor() {
+        this.currentLevel = 0;
+        this.turnCount = 0;
+        this.creatures = [];
+        this.pickups = []; // ball pickups and gold on the field
+    }
+
+    generateLevel(levelNum) {
+        this.currentLevel = levelNum;
+        this.turnCount = 0;
+        this.creatures = [];
+        this.pickups = [];
+
+        const rows = Math.min(2 + Math.floor(levelNum / 4), 5);
+        const cols = NJOX.GRID_COLS;
+        const baseHp = NJOX.BASE_HP + (levelNum - 1) * NJOX.HP_PER_LEVEL;
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                if (Math.random() < 0.45) continue;
+
+                const x = col * NJOX.CELL_SIZE + 2;
+                const y = NJOX.GRID_TOP + row * NJOX.CELL_SIZE + 2;
+                const hp = Math.max(1, Math.round(baseHp + NJOX.Utils.randFloat(0, Math.floor(levelNum / 2))));
+
+                const type = this._pickType(levelNum);
+                const creature = this._createCreature(type, x, y, hp);
+                creature.targetY = creature.y;
+                this.creatures.push(creature);
+            }
+        }
+
+        // Spawn initial pickups
+        this._spawnPickups();
+
+        return this.creatures;
+    }
+
+    // Spawn a new row at the top + pickups (called each turn)
+    // roundIndex is passed from game state for difficulty scaling
+    spawnNewRow(roundIndex) {
+        this.turnCount++;
+        const round = roundIndex || 1;
+        const cols = NJOX.GRID_COLS;
+        // HP scales with level + round
+        const baseHp = NJOX.BASE_HP + (this.currentLevel - 1) * NJOX.HP_PER_LEVEL + (round - 1) * 0.5;
+        // Spawn density increases with round (50% empty → 35% empty by round 5)
+        const emptyChance = Math.max(0.35, 0.55 - round * 0.04);
+
+        for (let col = 0; col < cols; col++) {
+            if (Math.random() < emptyChance) continue;
+
+            const x = col * NJOX.CELL_SIZE + 2;
+            const y = NJOX.GRID_TOP + 2;
+            const hp = Math.max(1, Math.round(baseHp + NJOX.Utils.randFloat(0, Math.ceil(round / 2))));
+
+            const type = this._pickType(this.currentLevel);
+            const creature = this._createCreature(type, x, y, hp);
+            creature.targetY = creature.y;
+            this.creatures.push(creature);
+        }
+
+        // Spawn pickups in the new row area
+        this._spawnPickups();
+    }
+
+    _spawnPickups() {
+        const cols = NJOX.GRID_COLS;
+
+        // Ball pickup — guaranteed 1 per round, extra chance scales with turn
+        const ballChance = Math.min(0.8, 0.4 + this.turnCount * 0.05);
+        if (Math.random() < ballChance || this.turnCount === 1) {
+            const col = NJOX.Utils.randInt(0, cols - 1);
+            this.pickups.push({
+                x: col * NJOX.CELL_SIZE + NJOX.CELL_SIZE / 2,
+                y: NJOX.GRID_TOP + NJOX.CELL_SIZE / 2,
+                type: 'ball',
+                collected: false,
+                radius: 8,
+            });
+        }
+
+        // Gold pickup — 15% chance
+        if (Math.random() < 0.15) {
+            const col = NJOX.Utils.randInt(0, cols - 1);
+            this.pickups.push({
+                x: col * NJOX.CELL_SIZE + NJOX.CELL_SIZE / 2,
+                y: NJOX.GRID_TOP + NJOX.CELL_SIZE / 2,
+                type: 'gold',
+                amount: NJOX.Utils.randInt(1, 3 + this.currentLevel),
+                collected: false,
+                radius: 7,
+            });
+        }
+    }
+
+    // Advance pickups down with rows
+    advancePickups() {
+        const advance = NJOX.CELL_SIZE * (NJOX.ROW_ADVANCE || 0.5);
+        for (const p of this.pickups) {
+            if (!p.collected) {
+                p.y += advance;
+            }
+        }
+        // Remove pickups that went past the floor
+        this.pickups = this.pickups.filter(p => !p.collected && p.y < NJOX.FLOOR_Y);
+    }
+
+    // Check ball-pickup collisions
+    checkPickupCollisions(balls, ballManager, game) {
+        for (const p of this.pickups) {
+            if (p.collected) continue;
+            for (const ball of balls) {
+                if (!ball.active) continue;
+                const dist = NJOX.Utils.distance(ball.x, ball.y, p.x, p.y);
+                if (dist < ball.radius + p.radius) {
+                    p.collected = true;
+                    if (p.type === 'ball') {
+                        ballManager.addBalls(1);
+                    } else if (p.type === 'gold') {
+                        game.gold = (game.gold || 0) + p.amount;
+                    }
+                    break;
+                }
+            }
+        }
+        this.pickups = this.pickups.filter(p => !p.collected);
+    }
+
+    // Render pickups
+    renderPickups(ctx) {
+        for (const p of this.pickups) {
+            if (p.collected) continue;
+            ctx.save();
+
+            if (p.type === 'ball') {
+                // White circle with + sign
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius + 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1a1a2e';
+                ctx.font = 'bold 10px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('+', p.x, p.y);
+            } else if (p.type === 'gold') {
+                // Gold coin
+                ctx.fillStyle = 'rgba(255,215,0,0.2)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius + 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#b8860b';
+                ctx.font = 'bold 9px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', p.x, p.y);
+            }
+
+            ctx.restore();
+        }
+    }
+
+    _pickType(level) {
+        const r = Math.random();
+        if (level <= 3) {
+            if (r < 0.80) return NJOX.CREATURE_TYPES.BASIC;
+            if (r < 0.90) return NJOX.CREATURE_TYPES.COUNTER;
+            return NJOX.CREATURE_TYPES.REACTIVE;
+        } else if (level <= 7) {
+            if (r < 0.50) return NJOX.CREATURE_TYPES.BASIC;
+            if (r < 0.65) return NJOX.CREATURE_TYPES.COUNTER;
+            if (r < 0.80) return NJOX.CREATURE_TYPES.REACTIVE;
+            if (r < 0.90) return NJOX.CREATURE_TYPES.SPLITTER;
+            return NJOX.CREATURE_TYPES.EATER;
+        } else {
+            if (r < 0.30) return NJOX.CREATURE_TYPES.BASIC;
+            if (r < 0.50) return NJOX.CREATURE_TYPES.COUNTER;
+            if (r < 0.65) return NJOX.CREATURE_TYPES.REACTIVE;
+            if (r < 0.85) return NJOX.CREATURE_TYPES.SPLITTER;
+            return NJOX.CREATURE_TYPES.EATER;
+        }
+    }
+
+    _createCreature(type, x, y, hp) {
+        switch (type) {
+            case NJOX.CREATURE_TYPES.SPLITTER:
+                return new NJOX.Splitter(x, y, hp);
+            case NJOX.CREATURE_TYPES.EATER:
+                return new NJOX.DirectionalEater(x, y, hp);
+            case NJOX.CREATURE_TYPES.COUNTER:
+                return new NJOX.CounterCreature(x, y, hp);
+            case NJOX.CREATURE_TYPES.REACTIVE:
+                return new NJOX.ReactiveCreature(x, y, hp);
+            default:
+                return new NJOX.BasicMonster(x, y, hp);
+        }
+    }
+
+    addCreatures(newCreatures) {
+        this.creatures.push(...newCreatures);
+    }
+
+    removeDeadCreatures() {
+        // Remove creatures that finished death animation
+        this.creatures = this.creatures.filter(c => c.alive || c.animState === 'death');
+    }
+
+    advanceRows() {
+        for (const c of this.creatures) {
+            if (c.alive) c.advanceRow();
+        }
+        this.advancePickups();
+    }
+
+    isGameOver() {
+        return this.creatures.some(c => c.alive && c.targetY + c.h >= NJOX.FLOOR_Y - 5);
+    }
+
+    isLevelClear() {
+        return this.creatures.filter(c => c.alive).length === 0;
+    }
+
+    isBossLevel(level) {
+        return level > 0 && level % NJOX.BOSS_EVERY === 0;
+    }
+
+    getTypeCounts() {
+        const counts = {};
+        for (const c of this.creatures) {
+            if (!c.alive) continue;
+            counts[c.type] = (counts[c.type] || 0) + 1;
+        }
+        return counts;
+    }
+};
+
+// ===== js/systems/reward-system.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.RewardSystem = class RewardSystem {
+    constructor() {
+        this.initialCounts = {};
+        this.currentCounts = {};
+        this.rewardsGranted = {};
+        this.pendingReward = null;
+        this.rewardMessage = '';
+        this.rewardTimer = 0;
+    }
+
+    initForLevel(creatures) {
+        this.initialCounts = {};
+        this.currentCounts = {};
+        this.rewardsGranted = {};
+        this.pendingReward = null;
+
+        for (const c of creatures) {
+            this.initialCounts[c.type] = (this.initialCounts[c.type] || 0) + 1;
+            this.currentCounts[c.type] = (this.currentCounts[c.type] || 0) + 1;
+        }
+    }
+
+    onCreatureKilled(type) {
+        if (!this.currentCounts[type]) return;
+        this.currentCounts[type]--;
+
+        if (this.currentCounts[type] <= 0 && !this.rewardsGranted[type]) {
+            this.rewardsGranted[type] = true;
+            this.pendingReward = this._getRewardForType(type);
+        }
+    }
+
+    _getRewardForType(type) {
+        switch (type) {
+            case NJOX.CREATURE_TYPES.BASIC:
+                return { type: 'extraBalls', amount: 1, message: 'All Monsters cleared! +1 Ball!' };
+            case NJOX.CREATURE_TYPES.SPLITTER:
+                return { type: 'pierce', message: 'All Splitters cleared! Piercing balls next turn!' };
+            case NJOX.CREATURE_TYPES.EATER:
+                return { type: 'doubleDamage', message: 'All Eaters cleared! 2x Damage next turn!' };
+            case NJOX.CREATURE_TYPES.COUNTER:
+                return { type: 'skipAdvance', message: 'All Counters cleared! Creatures skip advance!' };
+            case NJOX.CREATURE_TYPES.REACTIVE:
+                return { type: 'extraBalls', amount: 2, message: 'All Reactives cleared! +2 Balls!' };
+            default:
+                return null;
+        }
+    }
+
+    consumeReward() {
+        const reward = this.pendingReward;
+        this.pendingReward = null;
+        return reward;
+    }
+
+    // Apply a reward to game state
+    applyReward(reward, ballManager) {
+        if (!reward) return;
+        this.rewardMessage = reward.message;
+        this.rewardTimer = 2.0;
+
+        switch (reward.type) {
+            case 'extraBalls':
+                ballManager.addBalls(reward.amount || 1);
+                break;
+            case 'pierce':
+                ballManager.pierceActive = true;
+                break;
+            case 'doubleDamage':
+                ballManager.doubleDamage = true;
+                break;
+            case 'skipAdvance':
+                // Handled by caller — skip advanceRows
+                break;
+        }
+    }
+
+    update(dt) {
+        if (this.rewardTimer > 0) {
+            this.rewardTimer -= dt;
+        }
+    }
+
+    render(ctx) {
+        if (this.rewardTimer > 0) {
+            const alpha = Math.min(1, this.rewardTimer);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.rewardMessage, NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 40);
+            ctx.restore();
+        }
+    }
+};
+
+// ===== js/systems/boss-flow.js =====
+window.NJOX = window.NJOX || {};
+
+// Boss flow is managed via states in the main game state machine.
+// This module provides helper functions for the boss encounter sequence.
+
+NJOX.BossFlow = {
+    boss: null,
+    introTimer: 0,
+    victoryTimer: 0,
+
+    startPrompt(modal, callback) {
+        modal.show({
+            title: 'BOSS INCOMING',
+            body: 'What is stressing you the most right now?',
+            showInput: true,
+            onSubmit: (answer) => {
+                callback(answer);
+            }
+        });
+    },
+
+    createBoss(level, name) {
+        this.boss = new NJOX.Boss(level, name);
+        this.boss.entranceTimer = 1.0;
+        this.introTimer = 1.5;
+        return this.boss;
+    },
+
+    isBossDefeated() {
+        return this.boss && !this.boss.alive && this.boss.animState !== 'death';
+    },
+
+    update(dt) {
+        if (this.introTimer > 0) {
+            this.introTimer -= dt;
+        }
+        if (this.victoryTimer > 0) {
+            this.victoryTimer -= dt;
+        }
+    },
+
+    isIntroPlaying() {
+        return this.introTimer > 0;
+    }
+};
+
+// ===== js/systems/shop-system.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.ShopSystem = class ShopSystem {
+    constructor() {
+        this.items = [
+            { id: 'fire',   ...NJOX.SHOP.FIRE_BALL, unlocked: true,  firstFree: true },
+            { id: 'laser',  ...NJOX.SHOP.LASER,     unlocked: false },
+            { id: 'rocket', ...NJOX.SHOP.ROCKET,    unlocked: false },
+            { id: 'ice',    ...NJOX.SHOP.ICE_BALL,  unlocked: false },
+        ];
+        this.enabled = false; // enabled after level 1
+    }
+
+    enable() {
+        this.enabled = true;
+        for (const item of this.items) item.unlocked = true;
+    }
+
+    canAfford(itemId, gold) {
+        const item = this.items.find(i => i.id === itemId);
+        if (!item || !item.unlocked) return false;
+        if (item.firstFree) return true;
+        return gold >= item.cost;
+    }
+
+    purchase(itemId, game) {
+        const item = this.items.find(i => i.id === itemId);
+        if (!item || !item.unlocked) return null;
+
+        const cost = item.firstFree ? 0 : item.cost;
+        if (game.gold < cost) return null;
+
+        game.gold -= cost;
+        if (item.firstFree) item.firstFree = false;
+
+        return { id: item.id, count: item.count || 1 };
+    }
+
+    // Apply purchased item effect
+    applyEffect(purchase, game) {
+        if (!purchase) return;
+        const { ballManager, levelManager, particles } = game;
+
+        switch (purchase.id) {
+            case 'fire':
+                // Queue fire modifier for next N balls
+                ballManager.queueModifier('fire', purchase.count);
+                break;
+
+            case 'ice':
+                // Queue ice modifier for next N balls
+                ballManager.queueModifier('ice', purchase.count);
+                break;
+
+            case 'laser':
+                // Instant vertical line damage — hits all creatures in a column
+                this._fireLaser(game);
+                break;
+
+            case 'rocket':
+                // Destroy bottom row
+                this._fireRocket(game);
+                break;
+        }
+    }
+
+    _fireLaser(game) {
+        const { levelManager, particles } = game;
+        const launchX = game.ballManager.launchX;
+
+        for (const c of levelManager.creatures) {
+            if (!c.alive) continue;
+            // Check if creature is in the laser column (±30px)
+            if (Math.abs((c.x + c.w / 2) - launchX) < 30) {
+                c.hp -= 5;
+                c.hitFlashTimer = 0.2;
+                if (c.hp <= 0) {
+                    c.hp = 0;
+                    c.alive = false;
+                    c.animState = 'death';
+                    c.deathTimer = 0.3;
+                }
+                particles.emitHitSparks(c.x + c.w / 2, c.y + c.h / 2, 0, -1, '#00ffff');
+            }
+        }
+
+        // Visual: laser line particle effect
+        for (let y = 0; y < NJOX.FLOOR_Y; y += 20) {
+            particles.emit(launchX, y, 3, '#00ffff', {
+                speedMin: 20, speedMax: 60, sizeMin: 1, sizeMax: 3,
+                lifeMin: 0.2, lifeMax: 0.5, gravity: 0,
+            });
+        }
+    }
+
+    _fireRocket(game) {
+        const { levelManager, particles } = game;
+        // Find the lowest row of alive creatures
+        let maxY = -1;
+        for (const c of levelManager.creatures) {
+            if (c.alive && c.targetY > maxY) maxY = c.targetY;
+        }
+        if (maxY < 0) return;
+
+        // Destroy all creatures in that row (within CELL_SIZE tolerance)
+        for (const c of levelManager.creatures) {
+            if (!c.alive) continue;
+            if (Math.abs(c.targetY - maxY) < NJOX.CELL_SIZE * 0.6) {
+                c.hp = 0;
+                c.alive = false;
+                c.animState = 'death';
+                c.deathTimer = 0.3;
+                particles.emitDeathBurst(c.x, c.y, c.w, c.h, '#ff8800');
+            }
+        }
+
+        // Explosion effect across bottom
+        for (let x = 0; x < NJOX.CANVAS_W; x += 30) {
+            particles.emit(x, maxY + 25, 5, '#ff8800', {
+                speedMin: 50, speedMax: 200, sizeMin: 2, sizeMax: 5,
+                lifeMin: 0.3, lifeMax: 0.6, gravity: 80,
+            });
+        }
+
+        NJOX.Renderer.triggerShake(8, 0.3);
+    }
+};
+
+// ===== js/ui/aim-line.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.AimLine = {
+    // Draw dotted aim line with bounce preview
+    render(ctx, originX, originY, angle) {
+        const maxBounces = 3;
+        const maxLength = 800;
+
+        let x = originX;
+        let y = originY;
+        let dx = Math.cos(angle);
+        let dy = Math.sin(angle);
+
+        ctx.save();
+        ctx.setLineDash([4, 8]);
+        ctx.strokeStyle = NJOX.COLORS.AIM_LINE;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+
+        let bounces = 0;
+        let totalDist = 0;
+
+        while (bounces < maxBounces && totalDist < maxLength) {
+            // Ray march to next wall/ceiling
+            let minT = Infinity;
+            let hitType = null;
+
+            // Left wall
+            if (dx < 0) {
+                const t = (NJOX.BALL_RADIUS - x) / dx;
+                if (t > 0 && t < minT) { minT = t; hitType = 'left'; }
+            }
+            // Right wall
+            if (dx > 0) {
+                const t = (NJOX.CANVAS_W - NJOX.BALL_RADIUS - x) / dx;
+                if (t > 0 && t < minT) { minT = t; hitType = 'right'; }
+            }
+            // Ceiling
+            if (dy < 0) {
+                const t = (NJOX.BALL_RADIUS - y) / dy;
+                if (t > 0 && t < minT) { minT = t; hitType = 'top'; }
+            }
+            // Floor
+            if (dy > 0) {
+                const t = (NJOX.FLOOR_Y - y) / dy;
+                if (t > 0 && t < minT) { minT = t; hitType = 'floor'; }
+            }
+
+            if (minT === Infinity) break;
+
+            x += dx * minT;
+            y += dy * minT;
+            totalDist += minT;
+
+            ctx.lineTo(x, y);
+
+            if (hitType === 'floor') break;
+
+            // Bounce
+            if (hitType === 'left' || hitType === 'right') {
+                dx = -dx;
+            } else if (hitType === 'top') {
+                dy = -dy;
+            }
+
+            bounces++;
+        }
+
+        ctx.stroke();
+        ctx.restore();
+
+        // Draw small circle at end point
+        ctx.fillStyle = NJOX.COLORS.AIM_LINE;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+};
+
+// ===== js/ui/hud.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.HUD = {
+    render(ctx, game) {
+        const { levelManager, ballManager } = game;
+
+        ctx.save();
+
+        // Top bar background
+        ctx.fillStyle = NJOX.COLORS.HUD_BG;
+        ctx.fillRect(0, 0, NJOX.CANVAS_W, 30);
+
+        // Level + Round
+        ctx.fillStyle = NJOX.COLORS.TEXT;
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const roundText = game.roundIndex ? `LV${levelManager.currentLevel} R${game.roundIndex}` : `LV ${levelManager.currentLevel}`;
+        ctx.fillText(roundText, 6, 15);
+
+        // Gold counter
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText('$' + (game.gold || 0), 95, 15);
+
+        // Shots remaining
+        if (game.shotsRemaining != null) {
+            ctx.fillStyle = game.shotsRemaining <= 5 ? '#ff4444' : NJOX.COLORS.TEXT_DIM;
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(game.shotsRemaining + ' shots', NJOX.CANVAS_W / 2, 15);
+        }
+
+        // Creature type counts — right side
+        const counts = levelManager.getTypeCounts();
+        let offsetX = NJOX.CANVAS_W - 8;
+        const typeColors = {
+            [NJOX.CREATURE_TYPES.BASIC]: NJOX.COLORS.BASIC,
+            [NJOX.CREATURE_TYPES.SPLITTER]: NJOX.COLORS.SPLITTER,
+            [NJOX.CREATURE_TYPES.EATER]: NJOX.COLORS.EATER,
+            [NJOX.CREATURE_TYPES.COUNTER]: NJOX.COLORS.COUNTER,
+            [NJOX.CREATURE_TYPES.REACTIVE]: NJOX.COLORS.REACTIVE,
+        };
+
+        ctx.textAlign = 'right';
+        ctx.font = '10px monospace';
+
+        for (const t of Object.keys(typeColors)) {
+            const count = counts[t] || 0;
+            if (count <= 0) continue;
+            const text = '' + count;
+            ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
+            ctx.fillText(text, offsetX, 15);
+            offsetX -= ctx.measureText(text).width + 3;
+            ctx.fillStyle = typeColors[t];
+            NJOX.Utils.roundRect(ctx, offsetX - 7, 9, 7, 7, 2);
+            ctx.fill();
+            offsetX -= 12;
+        }
+
+        // Floor line
+        ctx.strokeStyle = NJOX.COLORS.FLOOR;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, NJOX.FLOOR_Y);
+        ctx.lineTo(NJOX.CANVAS_W, NJOX.FLOOR_Y);
+        ctx.stroke();
+
+        // Ball count (just above floor)
+        ctx.fillStyle = NJOX.COLORS.TEXT;
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('x' + ballManager.totalCount, 8, NJOX.FLOOR_Y - 4);
+
+        // Modifier indicator
+        if (ballManager.modifierQueue.length > 0) {
+            const mod = ballManager.modifierQueue[0];
+            const modColor = mod.type === 'fire' ? NJOX.COLORS.FIRE : NJOX.COLORS.ICE;
+            ctx.fillStyle = modColor;
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(mod.type.toUpperCase() + ' x' + mod.remaining, NJOX.CANVAS_W - 8, NJOX.FLOOR_Y - 4);
+        }
+
+        ctx.restore();
+    }
+};
+
+// ===== js/ui/boss-hp-bar.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.BossHPBar = {
+    displayHp: 1, // smooth animation
+
+    render(ctx, boss) {
+        if (!boss || !boss.alive) return;
+
+        const barX = 30;
+        const barY = 38;
+        const barW = NJOX.CANVAS_W - 60;
+        const barH = 14;
+
+        // Smooth HP animation
+        const targetHp = boss.hp / boss.maxHp;
+        this.displayHp = NJOX.Utils.lerp(this.displayHp, targetHp, 0.1);
+
+        // Boss name
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(boss.name.toUpperCase(), NJOX.CANVAS_W / 2, barY - 2);
+
+        // Bar background
+        ctx.fillStyle = NJOX.COLORS.HP_BAR_BG;
+        NJOX.Utils.roundRect(ctx, barX, barY, barW, barH, 4);
+        ctx.fill();
+
+        // Bar fill — color changes by phase
+        let fillColor;
+        if (this.displayHp > 0.66) fillColor = NJOX.COLORS.BOSS_PHASE1;
+        else if (this.displayHp > 0.33) fillColor = NJOX.COLORS.BOSS_PHASE2;
+        else fillColor = NJOX.COLORS.BOSS_PHASE3;
+
+        const fillW = Math.max(0, barW * this.displayHp);
+        if (fillW > 0) {
+            ctx.fillStyle = fillColor;
+            NJOX.Utils.roundRect(ctx, barX, barY, fillW, barH, 4);
+            ctx.fill();
+        }
+
+        // Phase markers
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1;
+        [0.33, 0.66].forEach(threshold => {
+            const mx = barX + barW * threshold;
+            ctx.beginPath();
+            ctx.moveTo(mx, barY);
+            ctx.lineTo(mx, barY + barH);
+            ctx.stroke();
+        });
+
+        // Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 1;
+        NJOX.Utils.roundRect(ctx, barX, barY, barW, barH, 4);
+        ctx.stroke();
+
+        // HP text
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.ceil(boss.hp) + '/' + boss.maxHp, NJOX.CANVAS_W / 2, barY + barH / 2);
+    }
+};
+
+// ===== js/ui/modal.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.Modal = class Modal {
+    constructor() {
+        this.visible = false;
+        this.alpha = 0;
+        this.title = '';
+        this.body = '';
+        this.showInput = false;
+        this.inputValue = '';
+        this.buttons = []; // { text, callback }
+        this.onSubmit = null;
+
+        // HTML input element (for boss prompt)
+        this.inputEl = null;
+        this.submitBtn = null;
+    }
+
+    show(opts) {
+        this.visible = true;
+        this.alpha = 0;
+        this.title = opts.title || '';
+        this.body = opts.body || '';
+        this.showInput = opts.showInput || false;
+        this.buttons = opts.buttons || [];
+        this.onSubmit = opts.onSubmit || null;
+        this.inputValue = '';
+
+        if (this.showInput) {
+            this._createInputEl();
+        }
+    }
+
+    hide() {
+        this.visible = false;
+        this.alpha = 0;
+        this._removeInputEl();
+    }
+
+    _createInputEl() {
+        if (this.inputEl) return;
+
+        const container = document.getElementById('modal-container');
+        container.style.display = 'flex';
+
+        this.inputEl = document.createElement('input');
+        this.inputEl.type = 'text';
+        this.inputEl.placeholder = 'Type here...';
+        this.inputEl.id = 'boss-input';
+        this.inputEl.maxLength = 30;
+
+        this.submitBtn = document.createElement('button');
+        this.submitBtn.textContent = 'FIGHT IT';
+        this.submitBtn.id = 'boss-submit';
+
+        container.innerHTML = '';
+        const title = document.createElement('div');
+        title.className = 'modal-title';
+        title.textContent = this.title;
+        container.appendChild(title);
+
+        if (this.body) {
+            const body = document.createElement('div');
+            body.className = 'modal-body';
+            body.textContent = this.body;
+            container.appendChild(body);
+        }
+
+        container.appendChild(this.inputEl);
+        container.appendChild(this.submitBtn);
+
+        this.inputEl.focus();
+
+        const handleSubmit = () => {
+            const val = this.inputEl.value.trim();
+            if (val && this.onSubmit) {
+                this.onSubmit(val);
+                this.hide();
+            }
+        };
+
+        this.submitBtn.addEventListener('click', handleSubmit);
+        this.inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleSubmit();
+        });
+    }
+
+    _removeInputEl() {
+        const container = document.getElementById('modal-container');
+        if (container) {
+            container.style.display = 'none';
+            container.innerHTML = '';
+        }
+        this.inputEl = null;
+        this.submitBtn = null;
+    }
+
+    update(dt) {
+        if (this.visible) {
+            this.alpha = Math.min(1, this.alpha + dt * 4);
+        }
+    }
+
+    render(ctx) {
+        if (!this.visible || this.showInput) return; // HTML handles input modal
+
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+
+        // Backdrop
+        ctx.fillStyle = NJOX.COLORS.MODAL_BG;
+        ctx.fillRect(0, 0, NJOX.CANVAS_W, NJOX.CANVAS_H);
+
+        // Box
+        const boxW = 300;
+        const boxH = 180;
+        const boxX = (NJOX.CANVAS_W - boxW) / 2;
+        const boxY = (NJOX.CANVAS_H - boxH) / 2;
+
+        ctx.fillStyle = '#1a1a2e';
+        NJOX.Utils.roundRect(ctx, boxX, boxY, boxW, boxH, 12);
+        ctx.fill();
+        ctx.strokeStyle = NJOX.COLORS.FLOOR;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Title
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.title, NJOX.CANVAS_W / 2, boxY + 40);
+
+        // Body
+        if (this.body) {
+            ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
+            ctx.font = '13px monospace';
+            // Word wrap
+            const words = this.body.split(' ');
+            let line = '';
+            let lineY = boxY + 70;
+            for (const word of words) {
+                const test = line + word + ' ';
+                if (ctx.measureText(test).width > boxW - 40) {
+                    ctx.fillText(line, NJOX.CANVAS_W / 2, lineY);
+                    line = word + ' ';
+                    lineY += 18;
+                } else {
+                    line = test;
+                }
+            }
+            ctx.fillText(line, NJOX.CANVAS_W / 2, lineY);
+        }
+
+        // Buttons
+        const btnY = boxY + boxH - 45;
+        const btnW = 100;
+        const btnH = 30;
+        const totalBtnW = this.buttons.length * (btnW + 10) - 10;
+        let btnX = (NJOX.CANVAS_W - totalBtnW) / 2;
+
+        for (const btn of this.buttons) {
+            ctx.fillStyle = NJOX.COLORS.BUTTON;
+            NJOX.Utils.roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText(btn.text, btnX + btnW / 2, btnY + btnH / 2);
+
+            btn._x = btnX;
+            btn._y = btnY;
+            btn._w = btnW;
+            btn._h = btnH;
+
+            btnX += btnW + 10;
+        }
+
+        ctx.restore();
+    }
+
+    handleClick(x, y) {
+        if (!this.visible || this.showInput) return;
+        for (const btn of this.buttons) {
+            if (x >= btn._x && x <= btn._x + btn._w &&
+                y >= btn._y && y <= btn._y + btn._h) {
+                if (btn.callback) btn.callback();
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+// ===== js/ui/screen-title.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.TitleScreen = {
+    time: 0,
+    // Decorative floating balls
+    balls: [],
+
+    init() {
+        this.time = 0;
+        this.balls = [];
+        for (let i = 0; i < 15; i++) {
+            this.balls.push({
+                x: Math.random() * NJOX.CANVAS_W,
+                y: Math.random() * NJOX.CANVAS_H,
+                vx: (Math.random() - 0.5) * 60,
+                vy: (Math.random() - 0.5) * 60,
+                radius: 3 + Math.random() * 4,
+                alpha: 0.1 + Math.random() * 0.3,
+            });
+        }
+    },
+
+    update(dt) {
+        this.time += dt;
+        for (const b of this.balls) {
+            b.x += b.vx * dt;
+            b.y += b.vy * dt;
+            if (b.x < 0 || b.x > NJOX.CANVAS_W) b.vx *= -1;
+            if (b.y < 0 || b.y > NJOX.CANVAS_H) b.vy *= -1;
+        }
+    },
+
+    render(ctx) {
+        // Background
+        NJOX.Renderer.drawBackground(ctx, NJOX.CANVAS_W, NJOX.CANVAS_H);
+
+        // Floating balls
+        for (const b of this.balls) {
+            ctx.fillStyle = `rgba(255,255,255,${b.alpha})`;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Title
+        const bounce = Math.sin(this.time * 2) * 8;
+        ctx.save();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 48px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('NJOX', NJOX.CANVAS_W / 2, 220 + bounce);
+
+        // Subtitle
+        ctx.fillStyle = NJOX.COLORS.FLOOR;
+        ctx.font = '14px monospace';
+        ctx.fillText('Fight Your Stress', NJOX.CANVAS_W / 2, 270 + bounce * 0.5);
+
+        // Tap to start — pulsing
+        const pulse = Math.sin(this.time * 3) * 0.3 + 0.7;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
+        ctx.font = '16px monospace';
+        ctx.fillText('Tap to Start', NJOX.CANVAS_W / 2, 400);
+        ctx.globalAlpha = 1;
+
+        // Decorative creature
+        const creatureY = 320 + Math.sin(this.time * 1.5) * 5;
+        ctx.fillStyle = NJOX.COLORS.BASIC;
+        NJOX.Utils.roundRect(ctx, NJOX.CANVAS_W / 2 - 25, creatureY, 50, 50, 8);
+        ctx.fill();
+        NJOX.Renderer.drawFace(ctx, NJOX.CANVAS_W / 2, creatureY + 25, 50, 50, {
+            blinkPhase: Math.sin(this.time * 0.5) > 0.9 ? 1 : 0,
+            mouthOpen: 0,
+            angry: false,
+            color: '#fff',
+            scale: 1,
+        });
+
+        ctx.restore();
+    }
+};
+
+// ===== js/ui/shop.js =====
+window.NJOX = window.NJOX || {};
+
+NJOX.ShopUI = {
+    // Render shop bar below the floor line
+    render(ctx, game) {
+        const shop = game.shopSystem;
+        if (!shop || !shop.enabled) return;
+
+        const y = NJOX.SHOP_Y;
+        const h = NJOX.SHOP_H;
+
+        // Background
+        ctx.fillStyle = NJOX.COLORS.SHOP_BG;
+        ctx.fillRect(0, y, NJOX.CANVAS_W, h);
+
+        // Divider line
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(NJOX.CANVAS_W, y);
+        ctx.stroke();
+
+        // "SHOP" label
+        ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('SHOP', NJOX.CANVAS_W / 2, y + 2);
+
+        // 4 item slots
+        const slotW = 90;
+        const slotH = 55;
+        const gap = 6;
+        const totalW = shop.items.length * slotW + (shop.items.length - 1) * gap;
+        let startX = (NJOX.CANVAS_W - totalW) / 2;
+        const slotY = y + 16;
+
+        for (let i = 0; i < shop.items.length; i++) {
+            const item = shop.items[i];
+            const sx = startX + i * (slotW + gap);
+
+            // Store hit area for click detection
+            item._hitX = sx;
+            item._hitY = slotY;
+            item._hitW = slotW;
+            item._hitH = slotH;
+
+            const canAfford = shop.canAfford(item.id, game.gold);
+            const alpha = item.unlocked ? (canAfford ? 1 : 0.4) : 0.2;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            // Slot background
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            NJOX.Utils.roundRect(ctx, sx, slotY, slotW, slotH, 6);
+            ctx.fill();
+
+            // Border
+            ctx.strokeStyle = canAfford ? item.color : 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = canAfford ? 1.5 : 0.5;
+            ctx.stroke();
+
+            // Icon circle
+            ctx.fillStyle = item.color;
+            ctx.beginPath();
+            ctx.arc(sx + slotW / 2, slotY + 16, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.label, sx + slotW / 2, slotY + 16);
+
+            // Cost
+            ctx.font = '8px monospace';
+            if (item.firstFree) {
+                ctx.fillStyle = '#4ecca3';
+                ctx.fillText('FREE', sx + slotW / 2, slotY + 34);
+            } else {
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText('$' + item.cost, sx + slotW / 2, slotY + 34);
+            }
+
+            // Description
+            ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
+            ctx.font = '7px monospace';
+            ctx.fillText(item.desc, sx + slotW / 2, slotY + 46);
+
+            ctx.restore();
+        }
+    },
+
+    // Handle click on shop
+    handleClick(x, y, game) {
+        const shop = game.shopSystem;
+        if (!shop || !shop.enabled) return false;
+
+        for (const item of shop.items) {
+            if (!item._hitX) continue;
+            if (x >= item._hitX && x <= item._hitX + item._hitW &&
+                y >= item._hitY && y <= item._hitY + item._hitH) {
+                if (shop.canAfford(item.id, game.gold)) {
+                    const purchase = shop.purchase(item.id, game);
+                    if (purchase) {
+                        shop.applyEffect(purchase, game);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+};
+
+// ===== js/main.js =====
+window.NJOX = window.NJOX || {};
+
+(function() {
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = NJOX.CANVAS_W;
+    canvas.height = NJOX.CANVAS_H;
+
+    // Core systems
+    const input = new NJOX.Input(canvas);
+    const ballManager = new NJOX.BallManager();
+    const levelManager = new NJOX.LevelManager();
+    const rewardSystem = new NJOX.RewardSystem();
+    const particles = new NJOX.ParticleSystem();
+    const modal = new NJOX.Modal();
+    const shopSystem = new NJOX.ShopSystem();
+    const fsm = new NJOX.StateMachine();
+
+    // Game state object — shared with HUD, shop, etc.
+    const game = {
+        levelManager, ballManager, rewardSystem, particles, modal, shopSystem,
+        gold: 0,
+        collectibles: [],
+        roundIndex: 1,
+        shotsRemaining: NJOX.SHOTS_PER_ROUND,
+    };
+
+    // Shared state
+    let skipAdvance = false;
+    let bossMode = false;
+    let boss = null;
+    let turnEndDelay = 0;
+    let levelCompleteDelay = 0;
+    let gameOverDelay = 0;
+
+    // ========== CLICK HANDLER ==========
+
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (NJOX.CANVAS_W / rect.width);
+        const y = (e.clientY - rect.top) * (NJOX.CANVAS_H / rect.height);
+
+        // Shop click (only in AIMING state)
+        if (fsm.currentName === 'AIMING' && y >= NJOX.SHOP_Y) {
+            NJOX.ShopUI.handleClick(x, y, game);
+            return;
+        }
+
+        modal.handleClick(x, y);
+    });
+
+    // ========== CENTRALIZED KILL EVENT ==========
+
+    function onCreatureKilled(creature) {
+        // Particles
+        particles.emitDeathBurst(creature.x, creature.y, creature.w, creature.h, creature.getColor());
+        NJOX.Renderer.triggerShake(4, 0.15);
+
+        // Gold drop — 1% chance
+        if (Math.random() < 0.01) {
+            const goldAmount = NJOX.Utils.randInt(1, 3 + levelManager.currentLevel);
+            game.gold += goldAmount;
+            game.collectibles.push({
+                x: creature.x + creature.w / 2,
+                y: creature.y + creature.h / 2,
+                type: 'gold',
+                amount: goldAmount,
+                timer: 1.5,
+            });
+        }
+
+        // Reward system
+        rewardSystem.onCreatureKilled(creature.type);
+        const reward = rewardSystem.consumeReward();
+        if (reward) {
+            if (reward.type === 'skipAdvance') skipAdvance = true;
+            rewardSystem.applyReward(reward, ballManager);
+        }
+    }
+
+    // ========== HIT CALLBACK ==========
+
+    function onCreatureHit(creature, col, ball) {
+        // Hit sparks — color based on ball type
+        const sparkColor = ball.type === 'fire' ? NJOX.COLORS.FIRE
+            : ball.type === 'ice' ? NJOX.COLORS.ICE
+            : creature.getColor();
+
+        particles.emitHitSparks(ball.x, ball.y, col.nx, col.ny, sparkColor);
+    }
+
+    // ========== KILL TRACKING ==========
+
+    function checkKills() {
+        const creatures = bossMode ? (boss ? [boss, ...boss.minions] : []) : levelManager.creatures;
+        for (const c of creatures) {
+            if (c._killHandled) continue;
+            if (!c.alive) {
+                c._killHandled = true;
+
+                // Splitter spawns
+                const spawns = c._pendingSpawns || [];
+                if (spawns.length > 0 && !bossMode) {
+                    levelManager.addCreatures(spawns);
+                }
+
+                // Centralized kill event
+                if (!bossMode) {
+                    onCreatureKilled(c);
+                }
+            }
+        }
+
+        if (boss) {
+            boss.minions = boss.minions.filter(m => m.alive);
+        }
+    }
+
+    // ========== SHARED UPDATE HELPERS ==========
+
+    function updateGameSystems(dt) {
+        for (const c of levelManager.creatures) c.update(dt);
+        if (boss) {
+            boss.update(dt);
+            for (const m of boss.minions) m.update(dt);
+        }
+        particles.update(dt);
+        rewardSystem.update(dt);
+        updateCollectibles(dt);
+        NJOX.Renderer.updateShake(dt);
+    }
+
+    function runPhysicsFrame(dt) {
+        ballManager.update(dt);
+        const creatures = bossMode ? (boss ? [boss, ...boss.minions] : []) : levelManager.creatures;
+        NJOX.Physics.update(dt, ballManager, creatures, onCreatureHit);
+
+        if (!bossMode) {
+            levelManager.checkPickupCollisions(ballManager.balls, ballManager, game);
+        }
+
+        if (boss && boss.alive) {
+            boss.checkMechanics(ballManager.balls, game);
+        }
+
+        if (boss) {
+            let nearestX = NJOX.CANVAS_W / 2;
+            let nearestDist = Infinity;
+            for (const b of ballManager.balls) {
+                if (!b.active) continue;
+                const d = NJOX.Utils.distance(b.x, b.y, boss.x + boss.w / 2, boss.y + boss.h / 2);
+                if (d < nearestDist) { nearestDist = d; nearestX = b.x; }
+            }
+            boss.trackX = nearestX;
+        }
+    }
+
+    // ========== STATES ==========
+
+    fsm.add('TITLE', {
+        enter() {
+            NJOX.TitleScreen.init();
+            bossMode = false;
+            boss = null;
+        },
+        update(dt) {
+            NJOX.TitleScreen.update(dt);
+            if (input.consumeLaunch()) fsm.transition('NEW_GAME');
+        },
+        render(c) { NJOX.TitleScreen.render(c); },
+        exit() {}
+    });
+
+    fsm.add('NEW_GAME', {
+        enter() {
+            ballManager.totalCount = NJOX.INITIAL_BALLS;
+            ballManager.balls = [];
+            ballManager.launchX = NJOX.CANVAS_W / 2;
+            ballManager.resetPowerUps();
+            ballManager.modifierQueue = [];
+            input.setLaunchOrigin(NJOX.CANVAS_W / 2);
+            particles.clear();
+            bossMode = false;
+            boss = null;
+            skipAdvance = false;
+            game.gold = 0;
+            game.collectibles = [];
+            game.roundIndex = 1;
+            game.shotsRemaining = NJOX.SHOTS_PER_ROUND;
+
+            fsm.transition('START_LEVEL', { level: 1 });
+        },
+        update() {}, render() {}, exit() {}
+    });
+
+    fsm.add('START_LEVEL', {
+        enter(data) {
+            const level = data.level;
+
+            // Enable shop after level 1
+            if (level > 1) shopSystem.enable();
+
+            // Boss check (after level 1)
+            if (level > 1 && levelManager.isBossLevel(level)) {
+                fsm.transition('BOSS_PROMPT', { level });
+            } else {
+                bossMode = false;
+                boss = null;
+                levelManager.generateLevel(level);
+                rewardSystem.initForLevel(levelManager.creatures);
+                NJOX.Physics.reset();
+                game.roundIndex = 1;
+                game.shotsRemaining = NJOX.SHOTS_PER_ROUND;
+                fsm.transition('AIMING');
+            }
+        },
+        update() {}, render() {}, exit() {}
+    });
+
+    // AIMING — player aims and clicks to shoot
+    fsm.add('AIMING', {
+        enter() {
+            ballManager.resetPowerUps();
+        },
+        update(dt) {
+            updateGameSystems(dt);
+
+            // Check if no shots left → force round end
+            if (!bossMode && game.shotsRemaining <= 0) {
+                fsm.transition('TURN_END');
+                return;
+            }
+
+            if (input.consumeLaunch()) {
+                // Don't shoot if clicking shop area
+                if (input.mouseY >= NJOX.SHOP_Y) return;
+
+                game.shotsRemaining--;
+                ballManager.startLaunch(input.aimAngle, input.launchX);
+                fsm.transition('LAUNCHING');
+            }
+        },
+        render(c) {
+            renderGameScene(c);
+            if (input.isAiming && input.mouseY < NJOX.SHOP_Y) {
+                NJOX.AimLine.render(c, input.launchX, input.launchY, input.aimAngle);
+            }
+        },
+        exit() {}
+    });
+
+    fsm.add('LAUNCHING', {
+        enter() {},
+        update(dt) {
+            runPhysicsFrame(dt);
+            updateGameSystems(dt);
+            checkKills();
+
+            if (!ballManager.launching) fsm.transition('ACTIVE_TURN');
+        },
+        render(c) { renderGameScene(c); },
+        exit() {}
+    });
+
+    fsm.add('ACTIVE_TURN', {
+        enter() {},
+        update(dt) {
+            runPhysicsFrame(dt);
+            updateGameSystems(dt);
+            checkKills();
+
+            if (ballManager.allReturned()) {
+                if (ballManager.firstLandX !== null) {
+                    input.setLaunchOrigin(ballManager.firstLandX);
+                    ballManager.launchX = ballManager.firstLandX;
+                }
+                fsm.transition('TURN_END');
+            }
+        },
+        render(c) { renderGameScene(c); },
+        exit() {}
+    });
+
+    // TURN_END — round/level progression logic
+    fsm.add('TURN_END', {
+        enter() {
+            turnEndDelay = 0.4;
+
+            if (bossMode) {
+                if (boss && !boss.alive && boss.animState !== 'death') {
+                    fsm.transition('BOSS_VICTORY');
+                    return;
+                }
+                return;
+            }
+
+            // Clean up dead creatures
+            levelManager.removeDeadCreatures();
+
+            // Advance rows
+            if (!skipAdvance) levelManager.advanceRows();
+            skipAdvance = false;
+
+            // Spawn new row from top
+            levelManager.spawnNewRow(game.roundIndex);
+
+            // Check game over
+            if (levelManager.isGameOver()) {
+                fsm.transition('GAME_OVER');
+                return;
+            }
+
+            // Check round completion: after ROUNDS_PER_LEVEL rounds → level complete
+            if (game.roundIndex >= NJOX.ROUNDS_PER_LEVEL) {
+                fsm.transition('LEVEL_COMPLETE');
+                return;
+            }
+
+            // Increment round
+            game.roundIndex++;
+            game.shotsRemaining = NJOX.SHOTS_PER_ROUND;
+        },
+        update(dt) {
+            turnEndDelay -= dt;
+            updateGameSystems(dt);
+            if (turnEndDelay <= 0) fsm.transition('AIMING');
+        },
+        render(c) { renderGameScene(c); },
+        exit() {}
+    });
+
+    fsm.add('LEVEL_COMPLETE', {
+        enter() {
+            levelCompleteDelay = 1.5;
+            ballManager.addBalls(2);
+        },
+        update(dt) {
+            levelCompleteDelay -= dt;
+            particles.update(dt);
+            NJOX.Renderer.updateShake(dt);
+            if (levelCompleteDelay <= 0) {
+                fsm.transition('START_LEVEL', { level: levelManager.currentLevel + 1 });
+            }
+        },
+        render(c) {
+            renderGameScene(c);
+            c.save();
+            c.fillStyle = 'rgba(0,0,0,0.4)';
+            c.fillRect(0, 0, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            c.fillStyle = '#4ecca3';
+            c.font = 'bold 24px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('LEVEL CLEAR!', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 20);
+            c.fillStyle = '#fff';
+            c.font = '14px monospace';
+            c.fillText('+2 Balls', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 15);
+            c.restore();
+        },
+        exit() {}
+    });
+
+    // ========== BOSS STATES ==========
+
+    fsm.add('BOSS_PROMPT', {
+        enter(data) {
+            this._level = data.level;
+            levelManager.currentLevel = data.level;
+            NJOX.BossFlow.startPrompt(modal, (answer) => {
+                fsm.transition('BOSS_INTRO', { level: this._level, name: answer });
+            });
+        },
+        update(dt) { modal.update(dt); },
+        render(c) {
+            NJOX.Renderer.drawBackground(c, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            modal.render(c);
+        },
+        exit() {}
+    });
+
+    fsm.add('BOSS_INTRO', {
+        enter(data) {
+            bossMode = true;
+            boss = NJOX.BossFlow.createBoss(data.level, data.name);
+            levelManager.creatures = [];
+            NJOX.Physics.reset();
+            NJOX.Renderer.triggerShake(8, 0.5);
+            game.shotsRemaining = NJOX.BOSS_SHOTS;
+            this._timer = 2.0;
+        },
+        update(dt) {
+            this._timer -= dt;
+            if (boss) boss.update(dt);
+            particles.update(dt);
+            NJOX.Renderer.updateShake(dt);
+            if (this._timer <= 0) fsm.transition('AIMING');
+        },
+        render(c) {
+            NJOX.Renderer.drawBackground(c, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            c.save();
+            c.translate(NJOX.Renderer.shakeOffset.x, NJOX.Renderer.shakeOffset.y);
+            if (boss) boss.render(c);
+            const alpha = Math.min(1, (2.0 - this._timer) / 1.0);
+            c.globalAlpha = alpha;
+            c.fillStyle = NJOX.COLORS.FLOOR;
+            c.font = 'bold 28px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(boss.name.toUpperCase(), NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 100);
+            c.fillStyle = '#fff';
+            c.font = '12px monospace';
+            c.fillText('YOUR STRESS AWAITS', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 130);
+            c.restore();
+            particles.render(c);
+            NJOX.HUD.render(c, game);
+            if (boss) NJOX.BossHPBar.render(c, boss);
+        },
+        exit() {}
+    });
+
+    fsm.add('BOSS_VICTORY', {
+        enter() {
+            this._timer = 3.0;
+            particles.emitDeathBurst(boss.x, boss.y, boss.w, boss.h, NJOX.COLORS.BOSS_RAGE);
+            particles.emitDeathBurst(boss.x, boss.y, boss.w, boss.h, '#ffd700');
+            NJOX.Renderer.triggerShake(10, 0.5);
+            ballManager.addBalls(3);
+            game.gold += 50; // boss gold reward
+        },
+        update(dt) {
+            this._timer -= dt;
+            particles.update(dt);
+            NJOX.Renderer.updateShake(dt);
+            if (this._timer <= 0) {
+                bossMode = false;
+                boss = null;
+                fsm.transition('START_LEVEL', { level: levelManager.currentLevel + 1 });
+            }
+        },
+        render(c) {
+            NJOX.Renderer.drawBackground(c, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            c.save();
+            c.translate(NJOX.Renderer.shakeOffset.x, NJOX.Renderer.shakeOffset.y);
+            particles.render(c);
+            c.restore();
+            c.save();
+            c.fillStyle = 'rgba(0,0,0,0.4)';
+            c.fillRect(0, 0, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            c.fillStyle = '#ffd700';
+            c.font = 'bold 22px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('YOU DEFEATED', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 30);
+            c.fillStyle = NJOX.COLORS.FLOOR;
+            c.font = 'bold 28px monospace';
+            c.fillText(boss ? boss.name.toUpperCase() : 'STRESS', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 10);
+            c.fillStyle = '#fff';
+            c.font = '13px monospace';
+            c.fillText('+3 Balls  +50 Gold', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 50);
+            c.restore();
+        },
+        exit() {}
+    });
+
+    fsm.add('GAME_OVER', {
+        enter() { gameOverDelay = 1.0; },
+        update(dt) {
+            gameOverDelay -= dt;
+            particles.update(dt);
+            if (gameOverDelay <= 0 && input.consumeLaunch()) fsm.transition('TITLE');
+        },
+        render(c) {
+            renderGameScene(c);
+            c.save();
+            c.fillStyle = 'rgba(0,0,0,0.6)';
+            c.fillRect(0, 0, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            c.fillStyle = NJOX.COLORS.FLOOR;
+            c.font = 'bold 32px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('GAME OVER', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 30);
+            c.fillStyle = '#fff';
+            c.font = '16px monospace';
+            c.fillText('Level ' + levelManager.currentLevel, NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 10);
+            if (gameOverDelay <= 0) {
+                const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+                c.globalAlpha = pulse;
+                c.fillStyle = NJOX.COLORS.TEXT_DIM;
+                c.font = '14px monospace';
+                c.fillText('Tap to Retry', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 60);
+            }
+            c.restore();
+        },
+        exit() {}
+    });
+
+    // ========== COLLECTIBLES ==========
+
+    function updateCollectibles(dt) {
+        if (!game.collectibles) return;
+        for (let i = game.collectibles.length - 1; i >= 0; i--) {
+            const col = game.collectibles[i];
+            col.timer -= dt;
+            col.y -= 30 * dt;
+            if (col.timer <= 0) game.collectibles.splice(i, 1);
+        }
+    }
+
+    function renderCollectibles(ctx) {
+        if (!game.collectibles) return;
+        for (const col of game.collectibles) {
+            const alpha = Math.min(1, col.timer);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 14px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('+' + col.amount + 'g', col.x, col.y);
+            ctx.restore();
+        }
+    }
+
+    // ========== SHARED RENDERING ==========
+
+    function renderGameScene(c) {
+        NJOX.Renderer.drawBackground(c, NJOX.CANVAS_W, NJOX.CANVAS_H);
+
+        c.save();
+        c.translate(NJOX.Renderer.shakeOffset.x, NJOX.Renderer.shakeOffset.y);
+
+        if (!bossMode) levelManager.renderPickups(c);
+
+        for (const cr of levelManager.creatures) cr.render(c);
+        if (boss) boss.render(c);
+
+        ballManager.render(c);
+        particles.render(c);
+        renderCollectibles(c);
+
+        c.restore();
+
+        // HUD
+        NJOX.HUD.render(c, game);
+        if (bossMode && boss) NJOX.BossHPBar.render(c, boss);
+        rewardSystem.render(c);
+
+        // Shop bar (always visible after level 1)
+        NJOX.ShopUI.render(c, game);
+    }
+
+    // ========== SPAWN PATCH ==========
+
+    const origOnHit = NJOX.Creature.prototype.onHit;
+    NJOX.Creature.prototype.onHit = function(ball, face, dmg) {
+        const result = origOnHit.call(this, ball, face, dmg);
+        if (result && result.killed && result.spawns) {
+            this._pendingSpawns = result.spawns;
+        }
+        return result;
+    };
+
+    // ========== START ==========
+
+    const loop = new NJOX.GameLoop(
+        (dt) => fsm.update(dt),
+        () => {
+            ctx.clearRect(0, 0, NJOX.CANVAS_W, NJOX.CANVAS_H);
+            fsm.render(ctx);
+        }
+    );
+
+    window._njoxDebug = { fsm, ballManager, levelManager, input, particles, rewardSystem, game };
+
+    fsm.transition('TITLE');
+    loop.start();
+
+})();
+    </script>
+</body>
+</html>
