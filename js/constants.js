@@ -29,6 +29,12 @@ NJOX.ROUNDS_PER_LEVEL = 5;
 NJOX.SHOTS_PER_ROUND = 10; // 5 rounds x 10 shots = 50 total per level
 NJOX.BOSS_SHOTS = 20;
 
+// Boss HP scaling — HP = BASE + chapter*PER_CH + chapter^EXP * COEFF
+NJOX.BOSS_HP_BASE      = 30;
+NJOX.BOSS_HP_PER_CH    = 20;
+NJOX.BOSS_HP_SCALE_EXP = 1.5;
+NJOX.BOSS_HP_SCALE_CO  = 5;
+
 // Shop prices
 NJOX.SHOP = {
     FIRE_BALL:  { cost: 10, label: '🔥 FIRE',   color: '#ff4444', desc: '5 balls · 3x hasar',  count: 5 },

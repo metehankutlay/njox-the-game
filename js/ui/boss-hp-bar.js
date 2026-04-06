@@ -57,6 +57,15 @@ NJOX.BossHPBar = {
         NJOX.Utils.roundRect(ctx, barX, barY, barW, barH, 4);
         ctx.stroke();
 
+        // Regen indicator — pulsing green edge on bar fill
+        if (boss.regenRate > 0 && !boss.vulnOpen) {
+            const pulse = 0.3 + 0.4 * Math.abs(Math.sin(Date.now() / 300));
+            ctx.strokeStyle = `rgba(80,255,120,${pulse})`;
+            ctx.lineWidth = 2;
+            NJOX.Utils.roundRect(ctx, barX, barY, fillW, barH, 4);
+            ctx.stroke();
+        }
+
         // HP text
         ctx.fillStyle = '#fff';
         ctx.font = '10px monospace';

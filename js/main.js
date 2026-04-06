@@ -1852,6 +1852,10 @@ window.NJOX = window.NJOX || {};
                 fsm.transition('TURN_END');
                 return;
             }
+            if (bossMode && game.shotsRemaining <= 0) {
+                fsm.transition('BOSS_BETWEEN_TURNS');
+                return;
+            }
 
             if (input.consumeLaunch()) {
                 if (input.mouseY >= NJOX.SHOP_Y) return;
@@ -2021,6 +2025,49 @@ window.NJOX = window.NJOX || {};
         exit() {}
     });
 
+    // ── BOSS_BETWEEN_TURNS ──────────────────────────────────────────────
+    // Boss hâlâ yaşıyorken atışlar bitti → kısa mola, boss aksiyon yapar,
+    // atışlar yenilenir ve tekrar AIMING'e dönülür.
+    fsm.add('BOSS_BETWEEN_TURNS', {
+        enter() {
+            this._timer = 2.5;
+            if (!game._bossTurnCount) game._bossTurnCount = 0;
+            game._bossTurnCount++;
+            game.shotsRemaining = NJOX.BOSS_SHOTS;
+            if (boss && boss.alive) boss.performTurnAction();
+        },
+        update(dt) {
+            this._timer -= dt;
+            updateGameSystems(dt);
+            if (boss) boss.update(dt);
+            for (const m of (boss ? boss.minions : [])) m.update(dt);
+
+            // Boss beam tamamlanana kadar bekle
+            if (boss && boss.beam) return;
+
+            // Boss öldüyse (enrage self-damage)
+            if (boss && !boss.alive) {
+                fsm.transition('TURN_END');
+                return;
+            }
+
+            if (this._timer <= 0) fsm.transition('AIMING');
+        },
+        render(c) {
+            renderGameScene(c);
+            // "BOSS HAZIRLANIYOR" uyarı metni
+            c.save();
+            c.fillStyle = '#fff';
+            c.globalAlpha = 0.5 + 0.3 * Math.abs(Math.sin(Date.now() / 200));
+            c.font = 'bold 18px monospace';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText('— BOSS HAZIRLANIYOR —', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 80);
+            c.restore();
+        },
+        exit() {}
+    });
+
     // ── BOSS_PROMPT ───────────────────────────────────────────────────────
     fsm.add('BOSS_PROMPT', {
         enter(data) {
@@ -2047,6 +2094,7 @@ window.NJOX = window.NJOX || {};
             NJOX.Physics.reset();
             NJOX.Renderer.triggerShake(8, 0.5);
             game.shotsRemaining = NJOX.BOSS_SHOTS;
+            game._bossTurnCount = 0;
             this._timer = 2.0;
         },
         update(dt) {
