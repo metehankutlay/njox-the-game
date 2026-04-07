@@ -4,8 +4,9 @@ window.NJOX = window.NJOX || {};
 NJOX.Sound = {
     _ctx: null,
     muted: false,
-    _activeOsc: 0,   // concurrent oscillator counter
-    _MAX_OSC: 6,     // max simultaneous oscillators
+    _activeOsc: 0,    // concurrent oscillator counter
+    _MAX_OSC: 14,     // max simultaneous oscillators
+    _lastToneTime: 0, // safety reset timestamp
 
     // Call on first user gesture AND on visibility return
     unlock() {
@@ -36,6 +37,11 @@ NJOX.Sound = {
     _get() {
         if (this.muted || !this._ctx) return null;
         if (this._ctx.state === 'suspended') this._ctx.resume();
+        // Safety: onended bazen tetiklenmez (tab suspend, GC) → sayaç sıkışır
+        // 2s boyunca yeni ses gelmemişse sayacı sıfırla
+        if (this._activeOsc > 0 && this._lastToneTime && Date.now() - this._lastToneTime > 2000) {
+            this._activeOsc = 0;
+        }
         return this._ctx;
     },
 
@@ -47,6 +53,7 @@ NJOX.Sound = {
         const startAt = ctx.currentTime + delayMs / 1000;
         try {
             this._activeOsc++;
+            this._lastToneTime = Date.now();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
