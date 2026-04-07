@@ -105,6 +105,9 @@ NJOX.BallManager = class BallManager {
     }
 
     getDamage() {
-        return (this.doubleDamage ? 2 : 1) + (this.bonusDamage || 0);
+        const base = this.doubleDamage ? 2 : 1;
+        // Iron Fist: +20% per level (multiplicative, not additive)
+        const ironFistMult = 1 + (this.bonusDamage || 0) * 0.2;
+        return base * ironFistMult;
     }
 };

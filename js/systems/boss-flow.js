@@ -19,8 +19,8 @@ NJOX.BossFlow = {
         });
     },
 
-    createBoss(level, name) {
-        this.boss = new NJOX.Boss(level, name);
+    createBoss(level, name, ballCount) {
+        this.boss = new NJOX.Boss(level, name, ballCount);
         this.boss.entranceTimer = 1.0;
         this.introTimer = 1.5;
         return this.boss;

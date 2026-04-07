@@ -19,8 +19,11 @@ NJOX.ParticleSystem = class ParticleSystem {
         this.particles = [];
     }
 
-    // Emit a burst of particles
+    // Emit a burst of particles — capped at 300 total
     emit(x, y, count, color, opts = {}) {
+        if (this.particles.length >= 300) return; // performance cap
+        count = Math.min(count, 300 - this.particles.length);
+
         const {
             speedMin = 50,
             speedMax = 200,
@@ -94,18 +97,16 @@ NJOX.ParticleSystem = class ParticleSystem {
     }
 
     render(ctx) {
+        // No save/restore, no shadowBlur — massive GPU savings
         for (const p of this.particles) {
-            const alpha = (p.life / p.maxLife);
+            const alpha = p.life / p.maxLife;
             const size = p.size * alpha;
-            ctx.save();
+            if (size < 0.5) continue;
             ctx.globalAlpha = alpha;
-            ctx.shadowColor = p.color;
-            ctx.shadowBlur = size * 2;
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
             ctx.fill();
-            ctx.restore();
         }
         ctx.globalAlpha = 1;
     }

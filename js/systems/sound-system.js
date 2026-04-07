@@ -4,9 +4,10 @@ window.NJOX = window.NJOX || {};
 NJOX.Sound = {
     _ctx: null,
     muted: false,
+    _activeOsc: 0,   // concurrent oscillator counter
+    _MAX_OSC: 6,     // max simultaneous oscillators
 
-    // Call this on the very first user gesture (mousedown / touchstart).
-    // Creates + resumes the AudioContext while we're inside a user event.
+    // Call on first user gesture AND on visibility return
     unlock() {
         if (this.muted) return;
         if (!this._ctx) {
@@ -19,20 +20,33 @@ NJOX.Sound = {
         }
     },
 
-    // Internal getter — context oluşturulmuşsa döner (suspended olsa bile)
-    // Web Audio scheduler context resume edilince bekleyen notları çalar.
+    // Call once at startup — adds visibility listener for tab-switch resume
+    init() {
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this._ctx && this._ctx.state === 'suspended') {
+                this._ctx.resume();
+            }
+        });
+        // Also resume on any touch/click (mobile browsers require user gesture)
+        const resumeOnGesture = () => this.unlock();
+        document.addEventListener('touchstart', resumeOnGesture, { passive: true });
+        document.addEventListener('mousedown', resumeOnGesture, { passive: true });
+    },
+
     _get() {
         if (this.muted || !this._ctx) return null;
         if (this._ctx.state === 'suspended') this._ctx.resume();
-        return this._ctx; // suspended olsa da zamanlanmış notlar çalınır
+        return this._ctx;
     },
 
-    // Core tone generator
+    // Core tone generator — with oscillator pool limit
     _tone(freq, type, dur, vol = 0.18, freqEnd = null, delayMs = 0) {
+        if (this._activeOsc >= this._MAX_OSC) return; // skip if too many
         const ctx = this._get();
         if (!ctx) return;
         const startAt = ctx.currentTime + delayMs / 1000;
         try {
+            this._activeOsc++;
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
@@ -44,7 +58,8 @@ NJOX.Sound = {
             gain.gain.exponentialRampToValueAtTime(0.001, startAt + dur);
             osc.start(startAt);
             osc.stop(startAt + dur);
-        } catch(e) {}
+            osc.onended = () => { this._activeOsc = Math.max(0, this._activeOsc - 1); };
+        } catch(e) { this._activeOsc = Math.max(0, this._activeOsc - 1); }
     },
 
     // --- Ball hit sounds (per type) ---

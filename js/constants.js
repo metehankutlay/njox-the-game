@@ -29,11 +29,10 @@ NJOX.ROUNDS_PER_LEVEL = 5;
 NJOX.SHOTS_PER_ROUND = 10; // 5 rounds x 10 shots = 50 total per level
 NJOX.BOSS_SHOTS = 20;
 
-// Boss HP scaling — HP = BASE + chapter*PER_CH + chapter^EXP * COEFF
-NJOX.BOSS_HP_BASE      = 30;
-NJOX.BOSS_HP_PER_CH    = 20;
-NJOX.BOSS_HP_SCALE_EXP = 1.5;
-NJOX.BOSS_HP_SCALE_CO  = 5;
+// Boss HP scaling — ball count × ratio × multiplier
+NJOX.BOSS_HP_RATIO_BASE   = 1.2;  // ch1'de ball başına HP oranı
+NJOX.BOSS_HP_RATIO_PER_CH = 0.4;  // her chapter +0.4 oran
+NJOX.BOSS_HP_MULTIPLIER   = 3;    // yaratıklara göre 3x tanklı
 
 // Shop prices
 NJOX.SHOP = {

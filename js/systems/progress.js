@@ -128,10 +128,10 @@ NJOX.Progress = {
 
     // ── Skill Tree ───────────────────────────────────────────────────────────
     SKILL_DEFS: {
-        ironFist:     { maxLevel: 3, costs: [20, 35, 55], name: 'Demir Yumruk',    desc: '+1 hasar/seviye' },
-        nerveSystem:  { maxLevel: 1, costs: [40],         name: 'Sinir Sistemi',   desc: 'Carry-over %50\'ye çıkar' },
-        stressShield: { maxLevel: 1, costs: [50],         name: 'Stres Kalkanı',   desc: 'Son Şans bedava' },
-        bloodTaste:   { maxLevel: 2, costs: [30, 50],     name: 'Kan Tadı',        desc: 'Kill kombosu atış ekler' },
+        ironFist:     { maxLevel: 3, costs: [40, 70, 120], name: 'Demir Yumruk',    desc: '+%20 hasar/seviye' },
+        nerveSystem:  { maxLevel: 1, costs: [60],          name: 'Sinir Sistemi',   desc: 'Carry-over %50\'ye çıkar' },
+        stressShield: { maxLevel: 1, costs: [80],          name: 'Stres Kalkanı',   desc: 'Son Şans bedava' },
+        bloodTaste:   { maxLevel: 2, costs: [50, 90],      name: 'Kan Tadı',        desc: 'Kill kombosu atış ekler' },
     },
 
     getSkillCost(id) {

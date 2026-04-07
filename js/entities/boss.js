@@ -1,13 +1,11 @@
 window.NJOX = window.NJOX || {};
 
 NJOX.Boss = class Boss extends NJOX.Creature {
-    constructor(chapter, name) {
-        // HP scaling: BASE + chapter*PER_CH + chapter^EXP * COEFF
-        const bossHp = Math.round(
-            NJOX.BOSS_HP_BASE +
-            chapter * NJOX.BOSS_HP_PER_CH +
-            Math.pow(chapter, NJOX.BOSS_HP_SCALE_EXP) * NJOX.BOSS_HP_SCALE_CO
-        );
+    constructor(chapter, name, ballCount) {
+        // HP scaling: ball count × chapter ratio × multiplier
+        const bc = Math.max(4, ballCount || 4);
+        const ratio = NJOX.BOSS_HP_RATIO_BASE + (chapter - 1) * NJOX.BOSS_HP_RATIO_PER_CH;
+        const bossHp = Math.max(20, Math.round(bc * ratio * NJOX.BOSS_HP_MULTIPLIER));
         const x = (NJOX.CANVAS_W - 150) / 2;
         const y = NJOX.GRID_TOP + 20;
         super(x, y, bossHp, 'boss');

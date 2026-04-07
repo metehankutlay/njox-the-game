@@ -356,8 +356,17 @@ window.NJOX = window.NJOX || {};
             });
         }
 
-        particles.emitDeathBurst(creature.x, creature.y, creature.w, creature.h, creature.getColor());
-        NJOX.Renderer.triggerShake(4, 0.15);
+        // Combo arttıkça kill başı parçacık azalt — performans
+        const deathParticles = Math.max(8, 22 - shotKills * 1.2);
+        particles.emit(creature.x + creature.w/2, creature.y + creature.h/2,
+            Math.round(deathParticles), creature.getColor(), {
+            speedMin: 80, speedMax: 350, sizeMin: 3, sizeMax: 8,
+            lifeMin: 0.4, lifeMax: 0.9, gravity: 60,
+        });
+        // Shake guard — zaten aktif shake varken yeni başlatma
+        if (NJOX.Renderer.shakeTimer < 0.05) {
+            NJOX.Renderer.triggerShake(4, 0.15);
+        }
 
         // Impact hold — yüksek HP'li ölüm, birkaç frame dondurma
         if (creature.maxHp >= 6) {
@@ -426,7 +435,7 @@ window.NJOX = window.NJOX || {};
                 const crCY  = creature.y + creature.h / 2;
                 const crClr = creature.getColor();
                 // Shard sayısını sınırlı tut — performans için max 14
-                const shardN = Math.min(14, 6 + lvl * 2);
+                const shardN = Math.min(8, 4 + lvl);
                 for (let i = 0; i < shardN; i++) {
                     const ang  = Math.random() * Math.PI * 2;
                     const spd  = 70 + Math.random() * 180;
@@ -481,11 +490,12 @@ window.NJOX = window.NJOX || {};
                         };
                     });
 
-                    // Kırık parçalar — her harften 2 küçük kopya, farklı açıda uçar
+                    // Kırık parçalar — her harften 1 küçük kopya, max 6
                     const splinters = [];
-                    chars.forEach((ch, i) => {
-                        const sx = cx2 + (i - (chars.length - 1) / 2) * charW;
-                        for (let s = 0; s < 2; s++) {
+                    const splinterChars = chars.slice(0, 6); // max 6 splinter
+                    splinterChars.forEach((ch, i) => {
+                        const sx = cx2 + (i - (splinterChars.length - 1) / 2) * charW;
+                        for (let s = 0; s < 1; s++) {
                             const ang  = Math.random() * Math.PI * 2;
                             const spds = 240 + Math.random() * 360;
                             const lfs  = 0.7 + Math.random() * 0.5;
@@ -562,9 +572,9 @@ window.NJOX = window.NJOX || {};
             }
         }
 
-        // Gold drop from creature — mobil casual standart: ~5-8% drop rate
-        if (Math.random() < 0.06) {
-            const amt = NJOX.Utils.randInt(1, 4 + levelManager.currentLevel);
+        // Gold drop from creature — düşük oran, sabit miktar
+        if (Math.random() < 0.03) {
+            const amt = NJOX.Utils.randInt(1, 2);
             game.gold += amt;
             game.collectibles.push({
                 x: creature.x + creature.w / 2,
@@ -781,8 +791,8 @@ window.NJOX = window.NJOX || {};
                         const len = Math.sqrt(dx * dx + dy * dy) || 1;
                         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 260;
                         // Yumuşak yönelim: mevcut hız ile hedefe doğru blend
-                        p.vx = p.vx * 0.7 + (dx / len) * speed * 0.3;
-                        p.vy = p.vy * 0.7 + (dy / len) * speed * 0.3;
+                        p.vx = p.vx * 0.65 + (dx / len) * speed * 0.35;
+                        p.vy = p.vy * 0.65 + (dy / len) * speed * 0.35;
                         // Minimum aşağı hız garanti et (ileri geri giderse saçma olur)
                         if (p.vy < 60) p.vy = 60;
                     }
@@ -1862,9 +1872,9 @@ window.NJOX = window.NJOX || {};
                 game.shotsRemaining--;
                 ballManager.startLaunch(input.aimAngle, input.launchX);
 
-                // Vampir: player top fırlatınca doğrudan 3 mor top atar
+                // Vampir: player top fırlatınca mor top atar — top sayısına göre scale
                 if (!bossMode) {
-                    const N_PROJ = 3;
+                    const N_PROJ = Math.min(8, Math.max(3, Math.floor(ballManager.totalCount * 0.05)));
                     for (const cr of levelManager.creatures) {
                         if (!cr.alive || cr.type !== NJOX.CREATURE_TYPES.VAMPIRE) continue;
                         const vcx = cr.x + cr.w / 2;
@@ -1972,8 +1982,8 @@ window.NJOX = window.NJOX || {};
 
                 // ── Round tamamlama altın bonusu ──────────────────────────
                 // Garantili küçük ödül — oyuncu her round ilerlemeli hisseder
-                // Formül: 3 + level + (round*0.5) ≈ ch1r1=4g, ch3r5=8g
-                const roundGold = 3 + levelManager.currentLevel + Math.floor(game.roundIndex * 0.5);
+                // Formül: 1 + level*0.5 + round*0.3 ≈ ch1r1=2g, ch5r5=4g
+                const roundGold = 1 + Math.floor(levelManager.currentLevel * 0.5) + Math.floor(game.roundIndex * 0.3);
                 game.gold += roundGold;
                 game.collectibles.push({
                     x: NJOX.CANVAS_W / 2, y: NJOX.CANVAS_H * 0.35,
@@ -2089,7 +2099,7 @@ window.NJOX = window.NJOX || {};
     fsm.add('BOSS_INTRO', {
         enter(data) {
             bossMode = true;
-            boss     = NJOX.BossFlow.createBoss(data.level, data.name);
+            boss     = NJOX.BossFlow.createBoss(data.level, data.name, ballManager.totalCount);
             levelManager.creatures = [];
             NJOX.Physics.reset();
             NJOX.Renderer.triggerShake(8, 0.5);
@@ -2874,6 +2884,7 @@ window.NJOX = window.NJOX || {};
     // ═════════════════════════════════════════════════════════════════════
 
     progress.init();
+    NJOX.Sound.init(); // visibilitychange + touch/click resume listeners
 
     const loop = new NJOX.GameLoop(
         (dt) => fsm.update(dt * (game.speedMultiplier || 1)),
