@@ -1024,16 +1024,16 @@ window.NJOX = window.NJOX || {};
         NJOX.HUD.render(c, game);
         if (bossMode && boss) NJOX.BossHPBar.render(c, boss);
 
-        // ── Stres Metre — HUD tier 2 (Y=22-46): yüz + etiket + çubuk ─────
+        // ── Stres Metre — stres bandı (Y=22-36): yüz + çubuk, etiket yok ──
         if (!bossMode && (game._stressMeterMax || 0) > 0) {
             const curHP = levelManager.creatures.reduce((s, cr) => cr.alive ? s + cr.hp : s, 0);
             const pct   = Math.max(0, Math.min(1, curHP / game._stressMeterMax));
-            const FACE_R = 6;
-            const FACE_X = 9;
-            const FACE_Y = 34;       // tier 2 center (22+46)/2 = 34
-            const BAR_X  = 46;       // after face + "STRES" label
-            const BAR_Y  = 30;       // vertically centered in tier 2
-            const BAR_W  = NJOX.CANVAS_W - BAR_X - 6;
+            const FACE_R = 5;
+            const FACE_X = 7;
+            const FACE_Y = 29;       // center of stress band (22+36)/2 = 29
+            const BAR_X  = 16;       // right of face: 7+5+4=16
+            const BAR_Y  = 25;       // vertically centered in band
+            const BAR_W  = NJOX.CANVAS_W - BAR_X - 4;
             const BAR_H  = 8;
 
             c.save();
@@ -1094,12 +1094,7 @@ window.NJOX = window.NJOX || {};
                 c.beginPath(); c.arc(FACE_X, FACE_Y + 2, 2.5, Math.PI * 0.2, Math.PI * 0.8); c.stroke();
             }
 
-            // Etiket: "STRES" — yüzün sağında, çubuğun solunda
-            c.fillStyle = 'rgba(255,255,255,0.45)';
-            c.font = 'bold 7px monospace';
-            c.textAlign = 'left';
-            c.textBaseline = 'middle';
-            c.fillText('STRES', FACE_X + FACE_R + 3, FACE_Y);
+            // Etiket yok — emoji yüz yeterince anlatıcı
 
             c.restore();
         }

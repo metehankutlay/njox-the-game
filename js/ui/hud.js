@@ -6,21 +6,21 @@ NJOX.HUD = {
 
         ctx.save();
 
-        // Top bar background — 2 tier (46px total)
+        // Top bar background — 36px (text row 0-22 + stress band 22-36)
         ctx.fillStyle = NJOX.COLORS.HUD_BG;
-        ctx.fillRect(0, 0, NJOX.CANVAS_W, 46);
+        ctx.fillRect(0, 0, NJOX.CANVAS_W, 36);
 
-        // Subtle separator between tier 1 and tier 2
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        // Thin separator between text row and stress band
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, 22);
         ctx.lineTo(NJOX.CANVAS_W, 22);
         ctx.stroke();
 
-        // ── Tier 1 (Y=11): text info ──────────────────────────────────────
+        // ── Text row (Y=11): chapter · gold · shots · kills ───────────────
 
-        // Chapter + Round progress — left
+        // Chapter + Round — left
         ctx.fillStyle = NJOX.COLORS.TEXT;
         ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'left';
@@ -29,15 +29,15 @@ NJOX.HUD = {
         const rnd      = game.roundIndex || 1;
         const rndTotal = NJOX.ROUNDS_PER_LEVEL;
         const roundText = game.bossMode
-            ? `CH${ch}  BOSS`
-            : `CH${ch}  R${rnd}/${rndTotal}`;
+            ? `CH${ch} BOSS`
+            : `CH${ch} R${rnd}/${rndTotal}`;
         ctx.fillText(roundText, 6, 11);
 
-        // Gold counter — safely after chapter text
+        // Gold — after chapter text (CH10 R5/5 = ~80px at 12px bold → safe at 120)
         ctx.fillStyle = '#ffd700';
         ctx.font = 'bold 11px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('$' + (game.gold || 0), 130, 11);
+        ctx.fillText('$' + (game.gold || 0), 120, 11);
 
         // Shots remaining — center
         if (game.shotsRemaining != null) {
@@ -47,7 +47,7 @@ NJOX.HUD = {
             ctx.fillText(game.shotsRemaining + ' shots', NJOX.CANVAS_W / 2, 11);
         }
 
-        // Total kills counter — right
+        // Kills — right
         if (game.totalKills != null) {
             ctx.textAlign = 'right';
             ctx.font = '11px monospace';
@@ -55,7 +55,7 @@ NJOX.HUD = {
             ctx.fillText('☠ ' + game.totalKills, NJOX.CANVAS_W - 6, 11);
         }
 
-        // ── Tier 2 (Y=22-46): stress meter drawn by main.js ──────────────
+        // ── Stress band (Y=22-36): drawn by main.js, BG already drawn ─────
 
         // Floor line
         ctx.strokeStyle = NJOX.COLORS.FLOOR;
