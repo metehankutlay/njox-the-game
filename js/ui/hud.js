@@ -12,7 +12,7 @@ NJOX.HUD = {
 
         // Chapter + Round progress
         ctx.fillStyle = NJOX.COLORS.TEXT;
-        ctx.font = 'bold 12px monospace';
+        ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         const ch       = levelManager.currentLevel || 1;
@@ -25,13 +25,13 @@ NJOX.HUD = {
 
         // Gold counter
         ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 11px monospace';
+        ctx.font = 'bold 12px monospace';
         ctx.fillText('$' + (game.gold || 0), 95, 15);
 
         // Shots remaining
         if (game.shotsRemaining != null) {
             ctx.fillStyle = game.shotsRemaining <= 5 ? '#ff4444' : NJOX.COLORS.TEXT_DIM;
-            ctx.font = '10px monospace';
+            ctx.font = '11px monospace';
             ctx.textAlign = 'center';
             ctx.fillText(game.shotsRemaining + ' shots', NJOX.CANVAS_W / 2, 15);
         }
@@ -39,7 +39,7 @@ NJOX.HUD = {
         // Total kills counter — right side
         if (game.totalKills != null) {
             ctx.textAlign = 'right';
-            ctx.font = '10px monospace';
+            ctx.font = '11px monospace';
             ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
             ctx.fillText('☠ ' + game.totalKills, NJOX.CANVAS_W - 8, 15);
         }
@@ -54,7 +54,7 @@ NJOX.HUD = {
 
         // Ball count (just above floor)
         ctx.fillStyle = NJOX.COLORS.TEXT;
-        ctx.font = 'bold 11px monospace';
+        ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
         ctx.fillText('x' + ballManager.totalCount, 8, NJOX.FLOOR_Y - 4);

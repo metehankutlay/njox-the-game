@@ -21,12 +21,12 @@ NJOX.ShopUI = {
         ctx.lineTo(NJOX.CANVAS_W, y);
         ctx.stroke();
 
-        // "SHOP" label
-        ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
-        ctx.font = '9px monospace';
+        // "— SHOP —" label
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillText('SHOP', NJOX.CANVAS_W / 2, y + 2);
+        ctx.fillText('— SHOP —', NJOX.CANVAS_W / 2, y + 2);
 
         // 4 item slots
         const slotW = 90;
@@ -70,13 +70,13 @@ NJOX.ShopUI = {
 
             // Label
             ctx.fillStyle = '#fff';
-            ctx.font = 'bold 9px monospace';
+            ctx.font = 'bold 10px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(item.label, sx + slotW / 2, slotY + 16);
 
             // Cost
-            ctx.font = '8px monospace';
+            ctx.font = '9px monospace';
             if (item.firstFree) {
                 ctx.fillStyle = '#4ecca3';
                 ctx.fillText('FREE', sx + slotW / 2, slotY + 34);
@@ -87,7 +87,7 @@ NJOX.ShopUI = {
 
             // Description
             ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
-            ctx.font = '7px monospace';
+            ctx.font = '8px monospace';
             ctx.fillText(item.desc, sx + slotW / 2, slotY + 46);
 
             ctx.restore();

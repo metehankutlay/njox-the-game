@@ -16,7 +16,7 @@ NJOX.GRID_COLS = Math.floor(NJOX.CANVAS_W / NJOX.CELL_SIZE);
 NJOX.GRID_TOP = 80;
 NJOX.FLOOR_Y = 580; // ball return line — shop area below
 NJOX.SHOP_Y = 590;  // shop bar starts here
-NJOX.SHOP_H = 160;  // shop bar height (590 to 750)
+NJOX.SHOP_H = 130;  // shop bar height (590 to 720, daha kompakt)
 
 // Gameplay
 NJOX.LAUNCH_INTERVAL = 0.06;

@@ -36,9 +36,10 @@ NJOX.Physics = {
                 NJOX.Sound.wallBounceRateLimited();
             }
 
-            // Ceiling bounce — resets wall-stuck counter (ball is making vertical progress)
-            if (ball.y - ball.radius < 0) {
-                ball.y = ball.radius;
+            // Ceiling bounce — HUD altından sek (toplar HUD'a girmesin)
+            const TOP_LIMIT = 32;
+            if (ball.y - ball.radius < TOP_LIMIT) {
+                ball.y = TOP_LIMIT + ball.radius;
                 ball.vy = Math.abs(ball.vy);
                 ball.wallBounces = 0;
                 NJOX.Sound.wallBounceRateLimited();

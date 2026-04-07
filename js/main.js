@@ -271,7 +271,7 @@ window.NJOX = window.NJOX || {};
                     _applyCard(cp._cards[i]);
                     cp._chosen        = i;
                     cp._revealed      = true;       // diğer kartlar da açılır
-                    cp._confirmTimer  = 2.20;       // 2.2s reveal göster, sonra geçiş
+                    cp._confirmTimer  = 3.0;        // 3s reveal göster, okunabilir
                     return;
                 }
             }
@@ -468,7 +468,7 @@ window.NJOX = window.NJOX || {};
                     const upper = trUpper(sName);
                     const chars = [...upper];
                     const cx2   = NJOX.CANVAS_W / 2;
-                    const cy2   = NJOX.CANVAS_H / 2;
+                    const cy2   = NJOX.GRID_TOP + 120; // üst bölge, render CY ile eşleşir
                     // Her harfe genişlik
                     const charW = Math.min(54, Math.max(36, 260 / Math.max(1, chars.length)));
                     const letters = chars.map((ch, i) => {
@@ -712,7 +712,7 @@ window.NJOX = window.NJOX || {};
                     stressNameBurst.exploded   = true;
                     stressNameBurst.flashAlpha = 1.0;
                     NJOX.Renderer.triggerShake(7 + stressNameBurst.lvl, 0.3);
-                    particles.emit(NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2,
+                    particles.emit(NJOX.CANVAS_W / 2, NJOX.GRID_TOP + 120,
                         40, stressNameBurst.letters[0]?.color || '#ffd700', {
                         speedMin: 180, speedMax: 500,
                         sizeMin: 4, sizeMax: 11,
@@ -1024,40 +1024,83 @@ window.NJOX = window.NJOX || {};
         NJOX.HUD.render(c, game);
         if (bossMode && boss) NJOX.BossHPBar.render(c, boss);
 
-        // ── Stres Metre — üst kenarda ince HP çubuğu ────────────────────
+        // ── Stres Metre — üst kenarda çubuk + emoji yüz + etiket ─────────
         if (!bossMode && (game._stressMeterMax || 0) > 0) {
             const curHP = levelManager.creatures.reduce((s, cr) => cr.alive ? s + cr.hp : s, 0);
             const pct   = Math.max(0, Math.min(1, curHP / game._stressMeterMax));
-            const BAR_W = NJOX.CANVAS_W - 16;
-            const BAR_H = 5;
-            const BAR_X = 8;
-            const BAR_Y = 2;
+            const FACE_R = 7;
+            const FACE_X = 14;
+            const FACE_Y = 10;
+            const BAR_X  = FACE_X + FACE_R + 8;
+            const BAR_Y  = 4;
+            const BAR_W  = NJOX.CANVAS_W - BAR_X - 8;
+            const BAR_H  = 8;
 
-            // Arka plan
             c.save();
+
+            // Çubuk arka plan
             c.fillStyle = 'rgba(0,0,0,0.45)';
-            NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W, BAR_H, 3);
+            NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W, BAR_H, 4);
             c.fill();
 
-            // Renk: yüksek stres=kırmızı, orta=turuncu, düşük=yeşil-altın
+            // Renk: kırmızı→turuncu→mavi-yeşil
             const barColor = pct > 0.6 ? `rgba(233,${Math.round(30 + pct * 40)},40,0.9)`
                            : pct > 0.3 ? `rgba(255,${Math.round(140 + (0.6-pct)*200)},0,0.9)`
-                           :             `rgba(80,220,120,0.9)`;
+                           :             `rgba(60,180,220,0.9)`;
             c.fillStyle = barColor;
-            c.shadowColor = barColor;
-            c.shadowBlur  = 6;
-            NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W * pct, BAR_H, 3);
+            NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W * pct, BAR_H, 4);
             c.fill();
-            c.shadowBlur = 0;
 
             // Nabız — yüksek stres titreşir
             if (pct > 0.65) {
                 const pulse = 0.5 + 0.5 * Math.abs(Math.sin(Date.now() / 260));
                 c.globalAlpha = pulse * 0.3;
                 c.fillStyle   = '#ff4444';
-                NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W * pct, BAR_H, 3);
+                NJOX.Utils.roundRect(c, BAR_X, BAR_Y, BAR_W * pct, BAR_H, 4);
                 c.fill();
+                c.globalAlpha = 1;
             }
+
+            // ── Emoji yüz — stres seviyesine göre değişir ──
+            const faceColor = pct > 0.6 ? '#e94560' : pct > 0.3 ? '#f59e0b' : '#4ec8dc';
+            // Yüz dairesi
+            c.fillStyle = faceColor;
+            c.beginPath();
+            c.arc(FACE_X, FACE_Y, FACE_R, 0, Math.PI * 2);
+            c.fill();
+
+            // Gözler + ifade
+            c.fillStyle = '#fff';
+            c.strokeStyle = '#fff';
+            c.lineWidth = 1.2;
+            if (pct > 0.6) {
+                // Kızgın: çatık kaşlar + düz ağız
+                c.beginPath(); c.arc(FACE_X - 2.5, FACE_Y - 1, 1.2, 0, Math.PI * 2); c.fill();
+                c.beginPath(); c.arc(FACE_X + 2.5, FACE_Y - 1, 1.2, 0, Math.PI * 2); c.fill();
+                // Çatık kaşlar
+                c.beginPath(); c.moveTo(FACE_X - 4, FACE_Y - 3.5); c.lineTo(FACE_X - 1, FACE_Y - 2.5); c.stroke();
+                c.beginPath(); c.moveTo(FACE_X + 4, FACE_Y - 3.5); c.lineTo(FACE_X + 1, FACE_Y - 2.5); c.stroke();
+                // Düz ağız
+                c.beginPath(); c.moveTo(FACE_X - 2.5, FACE_Y + 3); c.lineTo(FACE_X + 2.5, FACE_Y + 3); c.stroke();
+            } else if (pct > 0.3) {
+                // Endişeli: normal gözler + eğri ağız
+                c.beginPath(); c.arc(FACE_X - 2.5, FACE_Y - 1, 1.2, 0, Math.PI * 2); c.fill();
+                c.beginPath(); c.arc(FACE_X + 2.5, FACE_Y - 1, 1.2, 0, Math.PI * 2); c.fill();
+                c.beginPath(); c.arc(FACE_X, FACE_Y + 4, 2.5, -Math.PI * 0.8, -Math.PI * 0.2); c.stroke();
+            } else {
+                // Sakin: kapalı gözler + gülümseme
+                c.beginPath(); c.arc(FACE_X - 2.5, FACE_Y - 1, 2, Math.PI * 0.1, Math.PI * 0.9); c.stroke();
+                c.beginPath(); c.arc(FACE_X + 2.5, FACE_Y - 1, 2, Math.PI * 0.1, Math.PI * 0.9); c.stroke();
+                c.beginPath(); c.arc(FACE_X, FACE_Y + 2, 2.5, Math.PI * 0.2, Math.PI * 0.8); c.stroke();
+            }
+
+            // Etiket: "Alandaki Toplam Stres"
+            c.fillStyle = 'rgba(255,255,255,0.4)';
+            c.font = '7px monospace';
+            c.textAlign = 'left';
+            c.textBaseline = 'top';
+            c.fillText('Alandaki Toplam Stres', BAR_X, BAR_Y + BAR_H + 1);
+
             c.restore();
         }
         rewardSystem.render(c);
@@ -1178,7 +1221,7 @@ window.NJOX = window.NJOX || {};
         // ── Stres ismi BÜYÜK patlaması ────────────────────────────────────
         if (stressNameBurst) {
             const CX = NJOX.CANVAS_W / 2;
-            const CY = NJOX.CANVAS_H / 2;
+            const CY = NJOX.GRID_TOP + 120; // üst bölge — oyuncu oraya bakıyor
             c.save();
             c.textAlign    = 'center';
             c.textBaseline = 'middle';
@@ -2526,7 +2569,7 @@ window.NJOX = window.NJOX || {};
             c.textAlign    = 'center';
             c.textBaseline = 'middle';
             c.fillStyle    = rev ? 'rgba(255,215,0,0.8)' : '#ffd700';
-            c.font         = 'bold 15px monospace';
+            c.font         = 'bold 17px monospace';
             c.fillText(rev ? 'KADER AÇIKLANDI' : 'KADER KARTLARI', CX, CY - 115);
 
             c.fillStyle = 'rgba(255,255,255,0.28)';
@@ -2603,7 +2646,7 @@ window.NJOX = window.NJOX || {};
                         c.fillStyle = isChosen ? 'rgba(180,0,0,0.5)' : 'rgba(120,0,0,0.3)';
                         c.fillRect(cx + 1, cardY + 1, CARD_W - 2, 16);
                         c.fillStyle = isChosen ? '#ff9999' : '#ff6666';
-                        c.font = '7px monospace';
+                        c.font = 'bold 9px monospace';
                         c.textAlign = 'center';
                         c.textBaseline = 'middle';
                         c.fillText('⚠ OLUMSUZ', cx + CARD_W / 2, cardY + 9);
@@ -2617,12 +2660,12 @@ window.NJOX = window.NJOX || {};
                     c.fillText(card.icon, cx + CARD_W / 2, iconY);
 
                     // İsim
-                    c.font      = 'bold 9px monospace';
+                    c.font      = 'bold 11px monospace';
                     c.fillStyle = isChosen ? (isNeg ? '#ff7777' : '#ffd700') : '#cccccc';
                     c.fillText(card.name, cx + CARD_W / 2, cardY + 66);
 
                     // Açıklama (2 satır)
-                    c.font      = '8px monospace';
+                    c.font      = '9px monospace';
                     c.fillStyle = 'rgba(255,255,255,0.6)';
                     const words = card.desc.split(' ');
                     let line1 = '', line2 = '', l1Done = false;
@@ -2638,11 +2681,11 @@ window.NJOX = window.NJOX || {};
                     const lblY = cardY + CARD_H - 14;
                     if (isChosen) {
                         c.fillStyle = isNeg ? '#ff4444' : '#ffd700';
-                        c.font      = 'bold 9px monospace';
+                        c.font      = 'bold 10px monospace';
                         c.fillText(isNeg ? '✗ KÖTÜ ŞANS' : '✓ SEÇİLDİ', cx + CARD_W / 2, lblY);
                     } else {
                         c.fillStyle = 'rgba(255,255,255,0.25)';
-                        c.font      = '9px monospace';
+                        c.font      = '10px monospace';
                         c.fillText('✗', cx + CARD_W / 2, lblY);
                     }
 
@@ -2650,24 +2693,24 @@ window.NJOX = window.NJOX || {};
                 }
             }
 
-            // Skip butonu — sadece açılmadan önce, 1.5s sonra görünür
-            if (!rev && this._timer > 1.5) {
-                const skipAlpha = Math.min(1, (this._timer - 1.5) / 0.5);
-                const skipW = 90, skipH = 20;
+            // Skip butonu — 0.5s sonra görünür, belirgin
+            if (!rev && this._timer > 0.5) {
+                const skipAlpha = Math.min(1, (this._timer - 0.5) / 0.4);
+                const skipW = 120, skipH = 28;
                 const skipX = CX - skipW / 2;
                 const skipY = cardY + CARD_H + 16;
                 c.globalAlpha = skipAlpha;
-                c.fillStyle   = 'rgba(255,255,255,0.05)';
-                NJOX.Utils.roundRect(c, skipX, skipY, skipW, skipH, 5);
+                c.fillStyle   = 'rgba(255,255,255,0.12)';
+                NJOX.Utils.roundRect(c, skipX, skipY, skipW, skipH, 6);
                 c.fill();
-                c.strokeStyle = 'rgba(255,255,255,0.18)';
-                c.lineWidth   = 1;
+                c.strokeStyle = 'rgba(255,255,255,0.4)';
+                c.lineWidth   = 1.5;
                 c.stroke();
-                c.fillStyle    = 'rgba(255,255,255,0.35)';
-                c.font         = '9px monospace';
+                c.fillStyle    = 'rgba(255,255,255,0.6)';
+                c.font         = 'bold 11px monospace';
                 c.textAlign    = 'center';
                 c.textBaseline = 'middle';
-                c.fillText('geç →', CX, skipY + 10);
+                c.fillText('ATLA ▶', CX, skipY + 14);
                 c.globalAlpha = 1;
                 this._skipRect = { x: skipX, y: skipY, w: skipW, h: skipH };
             } else {
