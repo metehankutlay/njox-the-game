@@ -11,12 +11,12 @@ NJOX.WorldMap = (function () {
 
     // ── Layout constants ─────────────────────────────────────────────────
     const W        = NJOX.CANVAS_W;   // canvas width
-    const MAP_Y    = 270;   // Y center of node row
-    const NODE_R   = 36;    // node circle radius
+    const MAP_Y    = 220;   // Y center of node row (was 270)
+    const NODE_R   = 38;    // node circle radius (was 36)
     const NODE_GAP = 120;   // px between node centers
     const NODE_X0  = 80;    // x center of chapter 1 when scrollX=0
-    const INFO_Y   = 440;   // top of info panel
-    const INFO_H   = 210;   // height of info panel
+    const INFO_Y   = 380;   // top of info panel (was 440)
+    const INFO_H   = 280;   // height of info panel (was 210)
 
     // ── State ────────────────────────────────────────────────────────────
     let _scrollX       = 0;
@@ -165,12 +165,12 @@ NJOX.WorldMap = (function () {
         ctx.fillText('💰 ' + gold + 'g', W - 12, 31);
 
         // New Game button (small, top-left)
-        const ngW = 72, ngH = 20, ngX = 8, ngY = 8;
+        const ngW = 90, ngH = 26, ngX = 8, ngY = 6;
         ctx.fillStyle = 'rgba(255,255,255,0.06)';
         NJOX.Utils.roundRect(ctx, ngX, ngY, ngW, ngH, 4);
         ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.font = '9px monospace';
+        ctx.font = '11px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText('↺ NEW GAME', ngX + 6, ngY + ngH / 2);
@@ -178,7 +178,7 @@ NJOX.WorldMap = (function () {
 
         // Skill Tree button (bottom-left)
         {
-            const stW = 110, stH = 28, stX = 12, stY = H - 44;
+            const stW = 150, stH = 36, stX = 12, stY = H - 52;
             ctx.fillStyle = 'rgba(78,204,163,0.14)';
             NJOX.Utils.roundRect(ctx, stX, stY, stW, stH, 6);
             ctx.fill();
@@ -186,7 +186,7 @@ NJOX.WorldMap = (function () {
             ctx.lineWidth = 1;
             ctx.stroke();
             ctx.fillStyle = '#4ecca3';
-            ctx.font = 'bold 10px monospace';
+            ctx.font = 'bold 13px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('⚡ BECERİ AĞACI', stX + stW / 2, stY + stH / 2);
@@ -196,7 +196,7 @@ NJOX.WorldMap = (function () {
         // Daily Challenge button (bottom-right)
         {
             const isDailyAvail = progress.isDailyAvailable ? progress.isDailyAvailable() : true;
-            const dlW = 130, dlH = 28, dlX = W - dlW - 12, dlY = H - 44;
+            const dlW = 155, dlH = 36, dlX = W - dlW - 12, dlY = H - 52;
             ctx.fillStyle = isDailyAvail ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.05)';
             NJOX.Utils.roundRect(ctx, dlX, dlY, dlW, dlH, 6);
             ctx.fill();
@@ -204,7 +204,7 @@ NJOX.WorldMap = (function () {
             ctx.lineWidth = 1;
             ctx.stroke();
             ctx.fillStyle = isDailyAvail ? '#ffd700' : 'rgba(255,215,0,0.3)';
-            ctx.font = 'bold 10px monospace';
+            ctx.font = 'bold 13px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(isDailyAvail ? '📅 GÜNLÜK GÖREV' : '✓ BUGÜN TAMAM', dlX + dlW / 2, dlY + dlH / 2);
@@ -273,10 +273,10 @@ NJOX.WorldMap = (function () {
 
         // ── Bottom hint ─────────────────────────────────────────────────
         ctx.fillStyle = 'rgba(255,255,255,0.18)';
-        ctx.font = '10px monospace';
+        ctx.font = '11px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText('‹ › scroll  ·  tap chapter to select', W / 2, H - 10);
+        ctx.fillText('‹ › scroll  ·  tap chapter to select', W / 2, H - 62);
     }
 
     // ── Private helpers ─────────────────────────────────────────────────
@@ -383,7 +383,7 @@ NJOX.WorldMap = (function () {
         // Label below circle
         const labelY     = y + NODE_R + 10;
         ctx.textBaseline = 'top';
-        ctx.font         = '9px monospace';
+        ctx.font         = '11px monospace';
 
         if (isCurrent) {
             ctx.fillStyle = `rgba(233,69,96,${0.7 + pulse * 0.3})`;
@@ -400,7 +400,7 @@ NJOX.WorldMap = (function () {
             const cost      = NJOX.Progress.getReplayCost(n);
             const canAfford = gold >= cost;
             ctx.fillStyle   = canAfford ? 'rgba(255,215,0,0.7)' : 'rgba(255,215,0,0.28)';
-            ctx.fillText('↺ ' + cost + 'g', x, labelY + 13);
+            ctx.fillText('↺ ' + cost + 'g', x, labelY + 15);
 
         } else {
             ctx.fillStyle = 'rgba(255,255,255,0.2)';
@@ -432,29 +432,29 @@ NJOX.WorldMap = (function () {
                         : ch.status === 'defeated' ? '#4ecca3'
                         : 'rgba(255,255,255,0.3)';
         ctx.fillStyle    = headColor;
-        ctx.font         = 'bold 17px monospace';
+        ctx.font         = 'bold 19px monospace';
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'top';
         ctx.fillText('CHAPTER ' + _selected, cx, y);
-        y += 28;
+        y += 30;
 
         // ── Current chapter ──────────────────────────────────────────────
         if (ch.status === 'current') {
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.font      = '11px monospace';
+            ctx.font      = '13px monospace';
             ctx.fillText('5 rounds  ×  10 shots  →  boss fight', cx, y);
-            y += 30;
+            y += 32;
 
             // BIG PLAY button
-            const btnW = 180;
-            const btnH = 46;
+            const btnW = 200;
+            const btnH = 50;
             const btnX = (W - btnW) / 2;
             ctx.fillStyle = '#e94560';
             NJOX.Utils.roundRect(ctx, btnX, y, btnW, btnH, 9);
             ctx.fill();
 
             ctx.fillStyle    = '#fff';
-            ctx.font         = 'bold 16px monospace';
+            ctx.font         = 'bold 17px monospace';
             ctx.textBaseline = 'middle';
             ctx.fillText('▶  PLAY', cx, y + btnH / 2);
             _playBtn = { x: btnX, y, w: btnW, h: btnH };
@@ -463,25 +463,25 @@ NJOX.WorldMap = (function () {
         } else if (ch.status === 'defeated') {
             const bossName = ch.boss ? ch.boss.name : '???';
             ctx.fillStyle  = '#fff';
-            ctx.font       = 'bold 13px monospace';
+            ctx.font       = 'bold 14px monospace';
             ctx.textBaseline = 'top';
             ctx.fillText('"' + bossName + '"', cx, y);
-            y += 22;
+            y += 26;
 
             const info = progress.getRewardInfo(_selected);
             ctx.fillStyle = 'rgba(255,215,0,0.65)';
-            ctx.font      = '10px monospace';
+            ctx.font      = '12px monospace';
             ctx.fillText(
-                'Reward: ' + info.base + 'g base + up to ' + info.maxLoot + 'g loot',
+                'Ödül: ' + info.base + 'g sabit + ' + info.maxLoot + 'g\'a kadar ganimet',
                 cx, y
             );
-            y += 24;
+            y += 28;
 
             // REPLAY button
             const cost      = progress.getReplayCost(_selected);
             const canAfford = gold >= cost;
             const btnW      = 200;
-            const btnH      = 40;
+            const btnH      = 44;
             const btnX      = (W - btnW) / 2;
 
             ctx.fillStyle = canAfford ? '#8b6914' : 'rgba(80,60,0,0.4)';
@@ -489,18 +489,18 @@ NJOX.WorldMap = (function () {
             ctx.fill();
 
             ctx.fillStyle    = canAfford ? '#ffd700' : 'rgba(255,215,0,0.3)';
-            ctx.font         = 'bold 13px monospace';
+            ctx.font         = 'bold 14px monospace';
             ctx.textBaseline = 'middle';
-            ctx.fillText('↺ REPLAY  –' + cost + 'g', cx, y + btnH / 2);
+            ctx.fillText('↺ TEKRAR  –' + cost + 'g', cx, y + btnH / 2);
 
             if (canAfford) {
                 _replayBtn = { x: btnX, y, w: btnW, h: btnH };
             } else {
                 y += btnH + 8;
                 ctx.fillStyle    = 'rgba(255,100,100,0.5)';
-                ctx.font         = '10px monospace';
+                ctx.font         = '12px monospace';
                 ctx.textBaseline = 'top';
-                ctx.fillText('Need ' + (cost - gold) + 'g more', cx, y);
+                ctx.fillText(cost - gold + 'g daha gerekli', cx, y);
             }
 
         // ── Locked chapter ───────────────────────────────────────────────
@@ -508,11 +508,11 @@ NJOX.WorldMap = (function () {
             ctx.fillStyle    = 'rgba(255,255,255,0.3)';
             ctx.font         = '13px monospace';
             ctx.textBaseline = 'top';
-            ctx.fillText('🔒  Complete Chapter ' + (_selected - 1), cx, y);
-            y += 22;
-            ctx.font      = '10px monospace';
+            ctx.fillText('🔒  ' + (_selected - 1) + '. Bölümü bitir', cx, y);
+            y += 24;
+            ctx.font      = '12px monospace';
             ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillText('to unlock this chapter', cx, y);
+            ctx.fillText('Bu bölümün kilidi açılır', cx, y);
         }
     }
 

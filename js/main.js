@@ -312,9 +312,12 @@ window.NJOX = window.NJOX || {};
         }
 
         // ── Shop (AIMING only) ─────────────────────────────────────────
-        if (fsm.currentName === 'AIMING' && y >= NJOX.SHOP_Y) {
-            NJOX.ShopUI.handleClick(x, y, game);
-            return;
+        if (fsm.currentName === 'AIMING') {
+            const shopOpen = game.shopSystem && game.shopSystem._modalOpen;
+            if (y >= NJOX.SHOP_Y || shopOpen) {
+                NJOX.ShopUI.handleClick(x, y, game);
+                return;
+            }
         }
 
         modal.handleClick(x, y);
@@ -2750,18 +2753,18 @@ window.NJOX = window.NJOX || {};
 
             // ── Başlık ───────────────────────────────────────────────
             c.fillStyle = '#ffd700';
-            c.font      = 'bold 18px monospace';
+            c.font      = 'bold 20px monospace';
             c.fillText('⚡ BECERİ AĞACI', CX, 46);
 
             // Gold gösterimi
             c.fillStyle = '#ffd700';
-            c.font      = 'bold 13px monospace';
-            c.fillText('💰 ' + gold + 'g', CX, 72);
+            c.font      = 'bold 14px monospace';
+            c.fillText('💰 ' + gold + 'g', CX, 74);
 
             // ── Beceriler ────────────────────────────────────────────
             const ids   = ['ironFist', 'nerveSystem', 'stressShield', 'bloodTaste'];
-            const ROW_H = 80;
-            const TOP_Y = 100;
+            const ROW_H = 110;
+            const TOP_Y = 95;
             const CARD_W2 = NJOX.CANVAS_W - 40;
             const CARD_X  = 20;
 
@@ -2774,7 +2777,7 @@ window.NJOX = window.NJOX || {};
                 const cost = progress.getSkillCost(id);
                 const maxed = cost === null;
                 const canAfford = !maxed && gold >= cost;
-                const y = TOP_Y + i * (ROW_H + 10);
+                const y = TOP_Y + i * (ROW_H + 12);
 
                 // Kart arka planı
                 c.fillStyle = maxed ? 'rgba(78,204,163,0.25)' : 'rgba(20,22,40,0.85)';
@@ -2799,38 +2802,38 @@ window.NJOX = window.NJOX || {};
 
                 // İsim
                 c.fillStyle    = maxed ? '#4ecca3' : '#ffffff';
-                c.font         = 'bold 11px monospace';
+                c.font         = 'bold 14px monospace';
                 c.textAlign    = 'left';
-                c.fillText(def.name, CARD_X + 16, y + 34);
+                c.fillText(def.name, CARD_X + 16, y + 40);
 
                 // Açıklama
-                c.fillStyle = 'rgba(255,255,255,0.5)';
-                c.font      = '9px monospace';
-                c.fillText(def.desc, CARD_X + 16, y + 50);
+                c.fillStyle = 'rgba(255,255,255,0.55)';
+                c.font      = '11px monospace';
+                c.fillText(def.desc, CARD_X + 16, y + 62);
 
                 // Satın al butonu
-                const btnW = 72, btnH = 22;
+                const btnW = 100, btnH = 32;
                 const btnX = CARD_X + CARD_W2 - btnW - 10;
                 const btnY = y + (ROW_H - btnH) / 2;
 
                 if (maxed) {
                     c.fillStyle    = 'rgba(78,204,163,0.2)';
-                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 5);
+                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 6);
                     c.fill();
                     c.fillStyle    = '#4ecca3';
-                    c.font         = 'bold 9px monospace';
+                    c.font         = 'bold 12px monospace';
                     c.textAlign    = 'center';
                     c.textBaseline = 'middle';
                     c.fillText('MAX ✓', btnX + btnW / 2, btnY + btnH / 2);
                 } else {
                     c.fillStyle = canAfford ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.04)';
-                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 5);
+                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 6);
                     c.fill();
                     c.strokeStyle = canAfford ? 'rgba(255,215,0,0.7)' : 'rgba(255,255,255,0.1)';
-                    c.lineWidth   = 1;
+                    c.lineWidth   = 1.5;
                     c.stroke();
                     c.fillStyle    = canAfford ? '#ffd700' : 'rgba(255,255,255,0.25)';
-                    c.font         = 'bold 9px monospace';
+                    c.font         = 'bold 12px monospace';
                     c.textAlign    = 'center';
                     c.textBaseline = 'middle';
                     c.fillText(cost + 'g AL', btnX + btnW / 2, btnY + btnH / 2);
@@ -2841,20 +2844,20 @@ window.NJOX = window.NJOX || {};
             }
 
             // ── Geri butonu ──────────────────────────────────────────
-            const backW = 100, backH = 26;
+            const backW = 140, backH = 38;
             const backX = CX - backW / 2;
-            const backY = NJOX.CANVAS_H - 50;
+            const backY = NJOX.CANVAS_H - 58;
             c.fillStyle = 'rgba(255,255,255,0.07)';
-            NJOX.Utils.roundRect(c, backX, backY, backW, backH, 6);
+            NJOX.Utils.roundRect(c, backX, backY, backW, backH, 8);
             c.fill();
             c.strokeStyle = 'rgba(255,255,255,0.2)';
             c.lineWidth   = 1;
             c.stroke();
-            c.fillStyle    = 'rgba(255,255,255,0.5)';
-            c.font         = 'bold 10px monospace';
+            c.fillStyle    = 'rgba(255,255,255,0.6)';
+            c.font         = 'bold 13px monospace';
             c.textAlign    = 'center';
             c.textBaseline = 'middle';
-            c.fillText('← HARİTA', CX, backY + 13);
+            c.fillText('← HARİTA', CX, backY + backH / 2);
             this._backRect = { x: backX, y: backY, w: backW, h: backH };
 
             // ── Bildirim mesajı ──────────────────────────────────────

@@ -8,7 +8,9 @@ NJOX.ShopSystem = class ShopSystem {
             { id: 'ghost', ...NJOX.SHOP.GHOST_BALL, unlocked: false },
             { id: 'ice',   ...NJOX.SHOP.ICE_BALL,   unlocked: false },
         ];
-        this.enabled = false; // enabled after level 1
+        this.enabled      = false; // enabled after level 1
+        this._modalOpen   = false; // shop modal overlay visible
+        this._pendingItem = null;  // item id awaiting purchase confirmation
     }
 
     enable() {

@@ -14,9 +14,9 @@ NJOX.GRAVITY = 0;
 NJOX.CELL_SIZE = 50;
 NJOX.GRID_COLS = Math.floor(NJOX.CANVAS_W / NJOX.CELL_SIZE);
 NJOX.GRID_TOP = 80;
-NJOX.FLOOR_Y = 580; // ball return line — shop area below
-NJOX.SHOP_Y = 590;  // shop bar starts here
-NJOX.SHOP_H = 130;  // shop bar height (590 to 720, daha kompakt)
+NJOX.FLOOR_Y = 640; // ball return line — shop area below
+NJOX.SHOP_Y = 648;  // shop bar starts here
+NJOX.SHOP_H = 72;   // compact button bar (648 to 720)
 
 // Gameplay
 NJOX.LAUNCH_INTERVAL = 0.06;
@@ -39,10 +39,10 @@ NJOX.BOSS_HP_MULTIPLIER   = 11;   // yaratıklara göre 11x tanklı (was 3)
 
 // Shop prices
 NJOX.SHOP = {
-    FIRE_BALL:  { cost: 10, label: '🔥 FIRE',   color: '#ff4444', desc: '5 balls · 3x hasar',  count: 5 },
-    BOMB_BALL:  { cost: 18, label: '💣 BOMB',   color: '#ff6600', desc: '3 balls · AoE patlama', count: 3 },
-    GHOST_BALL: { cost: 14, label: '👻 GHOST',  color: '#aaaaff', desc: '5 balls · geçer + 2x', count: 5 },
-    ICE_BALL:   { cost: 12, label: '❄️ ICE',    color: '#88ddff', desc: '5 balls · dondurur',   count: 5 },
+    FIRE_BALL:  { cost: 10, label: '🔥 ATEŞ TOPU',  color: '#ff4444', desc: 'Sonraki 5 top · 3× hasar verir',     count: 5 },
+    BOMB_BALL:  { cost: 18, label: '💣 BOMBA TOPU', color: '#ff6600', desc: 'Sonraki 3 top · AoE patlama hasarı',  count: 3 },
+    GHOST_BALL: { cost: 14, label: '👻 HAYALET',    color: '#aaaaff', desc: 'Sonraki 5 top · nüfuz eder + 2× hasar', count: 5 },
+    ICE_BALL:   { cost: 12, label: '❄️ BUZ TOPU',   color: '#88ddff', desc: 'Sonraki 5 top · düşmanı dondurur',   count: 5 },
 };
 
 // Colors
