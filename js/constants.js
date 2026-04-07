@@ -5,7 +5,7 @@ NJOX.CANVAS_W = 500;
 NJOX.CANVAS_H = 720;
 
 // Physics
-NJOX.BALL_SPEED = 700;
+NJOX.BALL_SPEED = 820; // was 700 — arttırıldı (canvas daha büyük, 1× hızı normalize edildi)
 NJOX.BALL_RADIUS = 6;
 NJOX.PHYSICS_STEP = 1 / 120;
 NJOX.GRAVITY = 0;

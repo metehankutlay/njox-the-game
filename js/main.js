@@ -98,7 +98,7 @@ window.NJOX = window.NJOX || {};
         { id:'stress_wave',   icon:'🌊', name:'Stres Dalgası',desc:'Tüm düşmanlar strese girer +3 HP',     type:'negative' },
         { id:'hp_surge',      icon:'💢', name:'Güç Dalgası',  desc:'Tüm düşmanlar HP %30 artar',           type:'negative' },
         { id:'wrecker_tower', icon:'🗼', name:'Yıkıcı Kule',  desc:'Sahaya iner, her round 1 top yakar',   type:'negative' },
-        { id:'speed_curse',   icon:'🐌', name:'Yavaş Top',    desc:'Bu round toplar %45 daha yavaş',       type:'negative' },
+        { id:'spawn_guard',   icon:'⛓️', name:'Nöbetçi',      desc:'2 Zincirli yaratık anında sahaya iner', type:'negative' },
     ];
 
     function _pickRandomCards(n) {
@@ -191,9 +191,21 @@ window.NJOX = window.NJOX || {};
                 };
                 break;
             }
-            case 'speed_curse':
-                game._cardSpeedCurse = true;
+            case 'spawn_guard': {
+                // 2 Zincirli yaratık üst bölgeye, sol ve sağ tarafa iner
+                const guardCols = [2, 7];
+                for (const col of guardCols) {
+                    const sx  = col * NJOX.CELL_SIZE + 2;
+                    const sy  = NJOX.GRID_TOP + 2;
+                    const shp = levelManager._calcHP(
+                        ballManager.totalCount, levelManager.currentLevel, game.roundIndex || 1
+                    );
+                    const sc = new NJOX.ChainedCreature(sx, sy, shp);
+                    sc.targetY = sy;
+                    levelManager.creatures.unshift(sc);
+                }
                 break;
+            }
         }
     }
 
@@ -204,7 +216,7 @@ window.NJOX = window.NJOX || {};
         game._cardChainDeath     = false;
         game._cardIceStorm       = false;
         game._cardBlindRound     = false;
-        game._cardSpeedCurse     = false;
+        // game._cardSpeedCurse kaldırıldı (speed_curse kartı kaldırıldı)
         // rage_mode / bonusDamage skill tarafından da set edilebilir, skill değerini koru
         ballManager.bonusDamage  = progress.skills.ironFist || 0;
         // _wreckerTower resetlenmez — chapter boyunca kalır (öldürmezsen)
@@ -393,7 +405,8 @@ window.NJOX = window.NJOX || {};
         }
 
         // Combo arttıkça kill başı parçacık azalt — performans
-        const deathParticles = Math.max(8, 22 - shotKills * 1.2);
+        // Düşürüldü: max 16 (was 22) — büyük combolar artık akıcı
+        const deathParticles = Math.max(6, 16 - shotKills * 1.0);
         particles.emit(creature.x + creature.w/2, creature.y + creature.h/2,
             Math.round(deathParticles), creature.getColor(), {
             speedMin: 80, speedMax: 350, sizeMin: 3, sizeMax: 8,
@@ -404,9 +417,10 @@ window.NJOX = window.NJOX || {};
             NJOX.Renderer.triggerShake(4, 0.15);
         }
 
-        // Impact hold — yüksek HP'li ölüm, birkaç frame dondurma
-        if (creature.maxHp >= 6) {
-            impactHoldTimer = Math.min(0.12, 0.05 + creature.maxHp * 0.005);
+        // Impact hold — sadece shot'ın ilk killinde juice efekti
+        // Combo'da her kill'de tetiklenince titreme oluyordu (comboda atlıyoruz)
+        if (shotKills <= 1 && creature.maxHp >= 10) {
+            impactHoldTimer = Math.min(0.06, 0.025 + creature.maxHp * 0.001);
         }
 
         // ── Stres metre max güncelle ──────────────────────────────────────
@@ -435,15 +449,15 @@ window.NJOX = window.NJOX || {};
             const CX    = NJOX.CANVAS_W / 2;
             const CY    = NJOX.CANVAS_H / 2;
 
-            // Merkezi parçacık patlaması — miktar azaltıldı (FPS)
-            particles.emit(CX, CY, 12 + lvl * 8, bClr, {
+            // Merkezi parçacık patlaması — miktar daha da düşürüldü (lvl 1-5: 16→44, was 20→52)
+            particles.emit(CX, CY, 8 + lvl * 7, bClr, {
                 speedMin: 120, speedMax: 380 + lvl * 60,
                 sizeMin: 3, sizeMax: 7 + lvl * 1.5,
                 lifeMin: 0.5, lifeMax: 1.1 + lvl * 0.1,
                 gravity: 50,
             });
-            // İkincil beyaz parlama
-            particles.emit(CX, CY, 8 + lvl * 4, '#ffffff', {
+            // İkincil beyaz parlama (was 8+lvl*4, now 6+lvl*3)
+            particles.emit(CX, CY, 6 + lvl * 3, '#ffffff', {
                 speedMin: 60, speedMax: 180,
                 sizeMin: 2, sizeMax: 4,
                 lifeMin: 0.2, lifeMax: 0.55,
@@ -874,7 +888,7 @@ window.NJOX = window.NJOX || {};
     function runPhysicsFrame(dt) {
         if (impactHoldTimer > 0) return; // freeze: toplar da durur
         const eff     = dt * _slowMoFactor();
-        const ballEff = game._cardSpeedCurse ? eff * 0.55 : eff;
+        const ballEff = eff;
         ballManager.update(ballEff);
         const creatures = bossMode
             ? (boss ? [boss, ...boss.minions] : [])
