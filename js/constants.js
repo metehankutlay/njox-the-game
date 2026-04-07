@@ -30,9 +30,12 @@ NJOX.SHOTS_PER_ROUND = 10; // 5 rounds x 10 shots = 50 total per level
 NJOX.BOSS_SHOTS = 20;
 
 // Boss HP scaling — ball count × ratio × multiplier
-NJOX.BOSS_HP_RATIO_BASE   = 1.2;  // ch1'de ball başına HP oranı
-NJOX.BOSS_HP_RATIO_PER_CH = 0.4;  // her chapter +0.4 oran
-NJOX.BOSS_HP_MULTIPLIER   = 3;    // yaratıklara göre 3x tanklı
+// Hedef: oyuncunun 20-40 atışta öldürebileceği boss
+// ch1 4 top → ~80 HP (~8-10 atış)  |  ch5 30 top → ~2640 HP (~25 atış)
+// ch10 130 top → ~14300 HP (~30 atış)
+NJOX.BOSS_HP_RATIO_BASE   = 2.0;  // ch1'de ball başına HP oranı (was 1.2)
+NJOX.BOSS_HP_RATIO_PER_CH = 0.6;  // her chapter +0.6 oran (was 0.4)
+NJOX.BOSS_HP_MULTIPLIER   = 11;   // yaratıklara göre 11x tanklı (was 3)
 
 // Shop prices
 NJOX.SHOP = {

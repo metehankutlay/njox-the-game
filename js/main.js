@@ -399,15 +399,15 @@ window.NJOX = window.NJOX || {};
             const CX    = NJOX.CANVAS_W / 2;
             const CY    = NJOX.CANVAS_H / 2;
 
-            // Merkezi parçacık patlaması
-            particles.emit(CX, CY, 30 + lvl * 18, bClr, {
+            // Merkezi parçacık patlaması — miktar azaltıldı (FPS)
+            particles.emit(CX, CY, 12 + lvl * 8, bClr, {
                 speedMin: 120, speedMax: 380 + lvl * 60,
                 sizeMin: 3, sizeMax: 7 + lvl * 1.5,
                 lifeMin: 0.5, lifeMax: 1.1 + lvl * 0.1,
                 gravity: 50,
             });
             // İkincil beyaz parlama
-            particles.emit(CX, CY, 15 + lvl * 8, '#ffffff', {
+            particles.emit(CX, CY, 8 + lvl * 4, '#ffffff', {
                 speedMin: 60, speedMax: 180,
                 sizeMin: 2, sizeMax: 4,
                 lifeMin: 0.2, lifeMax: 0.55,
@@ -434,8 +434,8 @@ window.NJOX = window.NJOX || {};
                 const crCX  = creature.x + creature.w / 2;
                 const crCY  = creature.y + creature.h / 2;
                 const crClr = creature.getColor();
-                // Shard sayısını sınırlı tut — performans için max 14
-                const shardN = Math.min(8, 4 + lvl);
+                // Shard sayısını sınırlı tut — performans için max 6
+                const shardN = Math.min(6, 2 + lvl);
                 for (let i = 0; i < shardN; i++) {
                     const ang  = Math.random() * Math.PI * 2;
                     const spd  = 70 + Math.random() * 180;
@@ -456,6 +456,8 @@ window.NJOX = window.NJOX || {};
                         color: crClr,
                     });
                 }
+                // Yığılmayı önle: max 36 shard — çok sayıda top/ölümde FPS çökmesi
+                if (comboShards.length > 36) comboShards.length = 36;
 
                 // ── Stres ismi BÜYÜK patlaması ───────────────────────────
                 const sName = NJOX._stressName;
@@ -572,8 +574,8 @@ window.NJOX = window.NJOX || {};
             }
         }
 
-        // Gold drop from creature — düşük oran, sabit miktar
-        if (Math.random() < 0.03) {
+        // Gold drop from creature — düşürüldü (ekonomi dengesi)
+        if (Math.random() < 0.015) {
             const amt = NJOX.Utils.randInt(1, 2);
             game.gold += amt;
             game.collectibles.push({
@@ -801,19 +803,22 @@ window.NJOX = window.NJOX || {};
                 p.x += p.vx * eff;
                 p.y += p.vy * eff;
 
-                // Player topu çarpışması
+                // Player topu çarpışması — kalıcı top kaybı (gerçek tehdit)
                 for (const b of activeBalls) {
                     const dx = b.x - p.x, dy = b.y - p.y;
                     if (Math.sqrt(dx * dx + dy * dy) < NJOX.BALL_RADIUS + 5.5) {
-                        // Aktif top patlatılır — totalCount değişmez, sadece bu atış iptali
                         b.active = false;
                         p.active = false;
+                        // Kalıcı drain: top sayısı kalıcı düşer
+                        const drainAmt = Math.max(1, Math.floor(ballManager.totalCount * 0.015));
+                        ballManager.totalCount = Math.max(1, ballManager.totalCount - drainAmt);
                         particles.emitDeathBurst(p.x, p.y, 8, 6, '#cc44ff');
                         particles.emitDeathBurst(b.x, b.y, 6, 5, '#ffffff');
                         game.collectibles.push({
                             x: p.x, y: p.y,
-                            type: 'dmg', amount: '🧛 top patladı!', timer: 1.2,
+                            type: 'dmg', amount: `🧛 -${drainAmt} top!`, timer: 1.5,
                         });
+                        NJOX.Sound.vampireDrain();
                         break;
                     }
                 }
@@ -1746,13 +1751,13 @@ window.NJOX = window.NJOX || {};
                 c.textAlign    = 'center';
                 c.textBaseline = 'middle';
 
-                // Dinamik kart boyutu
+                // Dinamik kart boyutu — büyütüldü, okunabilirlik artırıldı
                 const n    = infos.length;
-                const SZ   = n <= 2 ? 80 : n === 3 ? 68 : n === 4 ? 58 : 50;
-                const GAP  = 18;
+                const SZ   = n <= 2 ? 130 : n === 3 ? 108 : n === 4 ? 86 : 70;
+                const GAP  = 14;
                 const crW  = n * SZ + (n - 1) * GAP;
                 const crStartX = CX - crW / 2;
-                const crTop    = CY - SZ / 2 - 20;
+                const crTop    = CY - SZ / 2 - 40;
 
                 for (let i = 0; i < n; i++) {
                     const info   = infos[i];
@@ -1786,11 +1791,11 @@ window.NJOX = window.NJOX || {};
 
                     // İsim — büyük, net
                     c.fillStyle = '#ffffff';
-                    c.font      = 'bold 16px monospace';
-                    c.fillText(info.name.toUpperCase(), slotCX, crTop + SZ + 20);
+                    c.font      = 'bold 19px monospace';
+                    c.fillText(info.name.toUpperCase(), slotCX, crTop + SZ + 22);
 
                     // Tag — renkli pill üstünde beyaz yazı
-                    c.font = 'bold 12px monospace';
+                    c.font = 'bold 14px monospace';
                     const tagW = c.measureText(info.tag).width + 20;
                     const tagH = 22;
                     const tagX = slotCX - tagW / 2;
@@ -1805,19 +1810,19 @@ window.NJOX = window.NJOX || {};
                 // ATLA butonu — panel altında, belirgin
                 if (this._skipVisible) {
                     c.globalAlpha = alpha;
-                    const btnW = 130, btnH = 36;
+                    const btnW = 160, btnH = 42;
                     const btnX = CX - btnW / 2;
-                    const btnY = crTop + SZ + 56;
-                    c.fillStyle   = 'rgba(255,255,255,0.12)';
-                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 9);
+                    const btnY = crTop + SZ + 62;
+                    c.fillStyle   = 'rgba(255,255,255,0.14)';
+                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 10);
                     c.fill();
-                    c.strokeStyle = 'rgba(255,255,255,0.35)';
-                    c.lineWidth   = 1.5;
-                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 9);
+                    c.strokeStyle = 'rgba(255,255,255,0.45)';
+                    c.lineWidth   = 2;
+                    NJOX.Utils.roundRect(c, btnX, btnY, btnW, btnH, 10);
                     c.stroke();
                     c.fillStyle    = '#ffffff';
-                    c.font         = 'bold 14px monospace';
-                    c.fillText('ATLA  →', CX, btnY + 18);
+                    c.font         = 'bold 16px monospace';
+                    c.fillText('ATLA  →', CX, btnY + 21);
                     c.globalAlpha = alpha;
                 }
 
@@ -1911,8 +1916,9 @@ window.NJOX = window.NJOX || {};
                 ballManager.startLaunch(input.aimAngle, input.launchX);
 
                 // Vampir: player top fırlatınca mor top atar — top sayısına göre scale
+                // N_PROJ: 130 topla ~13 top, her proj totalCount'u kalıcı düşürür → gerçek tehdit
                 if (!bossMode) {
-                    const N_PROJ = Math.min(8, Math.max(3, Math.floor(ballManager.totalCount * 0.05)));
+                    const N_PROJ = Math.min(14, Math.max(4, Math.floor(ballManager.totalCount * 0.10)));
                     for (const cr of levelManager.creatures) {
                         if (!cr.alive || cr.type !== NJOX.CREATURE_TYPES.VAMPIRE) continue;
                         const vcx = cr.x + cr.w / 2;
@@ -2018,10 +2024,10 @@ window.NJOX = window.NJOX || {};
                 // can see the jump animation and floating text on the board.
                 game._pendingStressSpread = true;
 
-                // ── Round tamamlama altın bonusu ──────────────────────────
-                // Garantili küçük ödül — oyuncu her round ilerlemeli hisseder
-                // Formül: 1 + level*0.5 + round*0.3 ≈ ch1r1=2g, ch5r5=4g
-                const roundGold = 1 + Math.floor(levelManager.currentLevel * 0.5) + Math.floor(game.roundIndex * 0.3);
+                // ── Round tamamlama altın bonusu — azaltıldı (ekonomi dengesi) ──
+                // Eski: 1 + level*0.5 + round*0.3 ≈ ch5r5: 4g  (çok kolay skill açılıyordu)
+                // Yeni: level*0.3 ≈ ch1: 0g, ch5: 1g, ch10: 3g — kazanım skill tree ile sınırlı
+                const roundGold = Math.floor(levelManager.currentLevel * 0.3);
                 game.gold += roundGold;
                 game.collectibles.push({
                     x: NJOX.CANVAS_W / 2, y: NJOX.CANVAS_H * 0.35,

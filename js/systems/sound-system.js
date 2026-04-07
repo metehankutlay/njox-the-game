@@ -24,8 +24,12 @@ NJOX.Sound = {
     // Call once at startup — adds visibility listener for tab-switch resume
     init() {
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && this._ctx && this._ctx.state === 'suspended') {
-                this._ctx.resume();
+            if (!document.hidden) {
+                // Tab'e döndüğünde: AudioContext'i resume et + stuck sayacı sıfırla
+                if (this._ctx && this._ctx.state === 'suspended') {
+                    this._ctx.resume();
+                }
+                this._activeOsc = 0; // oscillatörler tab'de takılı kalabilir
             }
         });
         // Also resume on any touch/click (mobile browsers require user gesture)
