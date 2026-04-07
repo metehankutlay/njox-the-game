@@ -97,7 +97,7 @@ window.NJOX = window.NJOX || {};
         { id:'blind_round',   icon:'🙈', name:'Kör Atış',     desc:'Bu round nişan çizgisi görünmez',      type:'negative' },
         { id:'stress_wave',   icon:'🌊', name:'Stres Dalgası',desc:'Tüm düşmanlar strese girer +3 HP',     type:'negative' },
         { id:'hp_surge',      icon:'💢', name:'Güç Dalgası',  desc:'Tüm düşmanlar HP %30 artar',           type:'negative' },
-        { id:'wrecker_tower', icon:'🗼', name:'Yıkıcı Kule',  desc:'Sahaya iner, her round 1 top yakar',   type:'negative' },
+        { id:'wrecker_tower', icon:'🗼', name:'Yıkıcı Kule',  desc:'Sahaya iner, her round top sayının %2\'si yakar',   type:'negative' },
         { id:'spawn_guard',   icon:'⛓️', name:'Nöbetçi',      desc:'2 Zincirli yaratık anında sahaya iner', type:'negative' },
     ];
 
@@ -182,12 +182,14 @@ window.NJOX = window.NJOX || {};
                 }
                 break;
             case 'wrecker_tower': {
-                // Kule sahada orta üst bölgeye yerleşir
-                const tw_x = NJOX.CANVAS_W / 2 - 22;
-                const tw_y = NJOX.GRID_TOP + NJOX.CELL_SIZE * 1.5;
+                // Kule sahada orta bölgeye yerleşir
+                // HP: top sayısına göre skala — düşük HP'de anında ölüp efekt tetiklenmiyordu
+                const tw_x  = NJOX.CANVAS_W / 2 - 22;
+                const tw_y  = NJOX.GRID_TOP + NJOX.CELL_SIZE * 2;
+                const tw_hp = Math.max(15, Math.floor(ballManager.totalCount * 1.2));
                 game._wreckerTower = {
                     x: tw_x, y: tw_y, w: 44, h: 44,
-                    hp: 6, maxHp: 6, alive: true,
+                    hp: tw_hp, maxHp: tw_hp, alive: true,
                 };
                 break;
             }
@@ -2095,12 +2097,14 @@ window.NJOX = window.NJOX || {};
                     type: 'gold', amount: roundGold, timer: 1.8,
                 });
 
-                // Yıkıcı Kule — round biterken 1 top yakar
+                // Yıkıcı Kule — round biterken topların %2'sini yakar (min 2)
+                // Sabit 1 top yerine top sayısına skala → geç oyunda anlamlı baskı
                 if (game._wreckerTower && game._wreckerTower.alive) {
-                    ballManager.totalCount = Math.max(1, ballManager.totalCount - 1);
+                    const burnAmt = Math.max(2, Math.floor(ballManager.totalCount * 0.02));
+                    ballManager.totalCount = Math.max(1, ballManager.totalCount - burnAmt);
                     game.collectibles.push({
                         x: NJOX.CANVAS_W / 2, y: NJOX.GRID_TOP + NJOX.CELL_SIZE * 2,
-                        type:'dmg', amount:'🗼 -1🎱', timer:2.2,
+                        type:'dmg', amount:`🗼 -${burnAmt}🎱`, timer:2.2,
                     });
                 }
 
