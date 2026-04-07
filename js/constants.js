@@ -2,7 +2,7 @@ window.NJOX = window.NJOX || {};
 
 // Canvas
 NJOX.CANVAS_W = 500;
-NJOX.CANVAS_H = 750;
+NJOX.CANVAS_H = 720;
 
 // Physics
 NJOX.BALL_SPEED = 700;

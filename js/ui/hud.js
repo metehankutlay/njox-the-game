@@ -6,13 +6,23 @@ NJOX.HUD = {
 
         ctx.save();
 
-        // Top bar background
+        // Top bar background — 2 tier (46px total)
         ctx.fillStyle = NJOX.COLORS.HUD_BG;
-        ctx.fillRect(0, 0, NJOX.CANVAS_W, 30);
+        ctx.fillRect(0, 0, NJOX.CANVAS_W, 46);
 
-        // Chapter + Round progress
+        // Subtle separator between tier 1 and tier 2
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, 22);
+        ctx.lineTo(NJOX.CANVAS_W, 22);
+        ctx.stroke();
+
+        // ── Tier 1 (Y=11): text info ──────────────────────────────────────
+
+        // Chapter + Round progress — left
         ctx.fillStyle = NJOX.COLORS.TEXT;
-        ctx.font = 'bold 13px monospace';
+        ctx.font = 'bold 12px monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         const ch       = levelManager.currentLevel || 1;
@@ -21,28 +31,31 @@ NJOX.HUD = {
         const roundText = game.bossMode
             ? `CH${ch}  BOSS`
             : `CH${ch}  R${rnd}/${rndTotal}`;
-        ctx.fillText(roundText, 6, 15);
+        ctx.fillText(roundText, 6, 11);
 
-        // Gold counter
+        // Gold counter — safely after chapter text
         ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText('$' + (game.gold || 0), 95, 15);
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('$' + (game.gold || 0), 130, 11);
 
-        // Shots remaining
+        // Shots remaining — center
         if (game.shotsRemaining != null) {
             ctx.fillStyle = game.shotsRemaining <= 5 ? '#ff4444' : NJOX.COLORS.TEXT_DIM;
             ctx.font = '11px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(game.shotsRemaining + ' shots', NJOX.CANVAS_W / 2, 15);
+            ctx.fillText(game.shotsRemaining + ' shots', NJOX.CANVAS_W / 2, 11);
         }
 
-        // Total kills counter — right side
+        // Total kills counter — right
         if (game.totalKills != null) {
             ctx.textAlign = 'right';
             ctx.font = '11px monospace';
             ctx.fillStyle = NJOX.COLORS.TEXT_DIM;
-            ctx.fillText('☠ ' + game.totalKills, NJOX.CANVAS_W - 8, 15);
+            ctx.fillText('☠ ' + game.totalKills, NJOX.CANVAS_W - 6, 11);
         }
+
+        // ── Tier 2 (Y=22-46): stress meter drawn by main.js ──────────────
 
         // Floor line
         ctx.strokeStyle = NJOX.COLORS.FLOOR;

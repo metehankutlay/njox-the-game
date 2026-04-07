@@ -36,8 +36,8 @@ NJOX.Physics = {
                 NJOX.Sound.wallBounceRateLimited();
             }
 
-            // Ceiling bounce — HUD altından sek (toplar HUD'a girmesin)
-            const TOP_LIMIT = 32;
+            // Ceiling bounce — HUD altından sek (toplar 2-tier HUD'a girmesin)
+            const TOP_LIMIT = 48;
             if (ball.y - ball.radius < TOP_LIMIT) {
                 ball.y = TOP_LIMIT + ball.radius;
                 ball.vy = Math.abs(ball.vy);

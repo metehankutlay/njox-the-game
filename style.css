@@ -24,8 +24,8 @@ html, body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: min(100vw, calc(100svh * 500 / 750));
-    height: min(100svh, calc(100vw * 750 / 500));
+    width: min(100vw, calc(100svh * 500 / 720));
+    height: min(100svh, calc(100vw * 720 / 500));
 }
 
 #game-canvas {
