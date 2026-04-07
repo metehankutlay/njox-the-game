@@ -263,9 +263,9 @@ NJOX.LevelManager = class LevelManager {
         // ── Special types (priority-ordered, cumulative %) ────────────────
         // Vampire:         5%  (level 2+)
         if (level >= 2 && r < 0.05) return NJOX.CREATURE_TYPES.VAMPIRE;
-        // Stress Spreader: 10% (level 1+) — bulaşma zincirine daha sık tanık olsun
-        if (r < 0.10) return NJOX.CREATURE_TYPES.STRESS_SPREADER;
-        // Ball Carrier:    3%  (all levels)
+        // Stress Spreader: 8%  (level 1+) — biraz azaltıldı (was 10%)
+        if (r < 0.08) return NJOX.CREATURE_TYPES.STRESS_SPREADER;
+        // Ball Carrier:    5%  (all levels) — artırıldı (was 3%)
         if (r < 0.13) return NJOX.CREATURE_TYPES.BALL_CARRIER;
         // Vomiter:         5%  (all levels)
         if (r < 0.18) return NJOX.CREATURE_TYPES.VOMITER;
@@ -342,18 +342,24 @@ NJOX.LevelManager = class LevelManager {
 
             if (adjacent.length === 0) continue;
 
-            // Tüm komşulara +5 HP stres bulaştır
+            // Tüm komşulara +3 HP stres bulaştır (was +5 — hafifletildi)
             for (const t of adjacent) {
                 t.isStressed = true;
-                t.hp        += 5;
-                t.maxHp     += 5;
-                events.push({ x: t.x + t.w / 2, y: t.y, amount: '+5 Stres' });
+                t.hp        += 3;
+                t.maxHp     += 3;
+                events.push({ x: t.x + t.w / 2, y: t.y, amount: '+3 Stres' });
             }
 
-            // 1 rastgele komşu → +10 ek HP + stres yayıcıya dönüşür
+            // Dönüşüm limiti: her yayıcı tüm oyun boyunca MAX 2 kez dönüştürür
+            // Komşuları hâlâ strese sokar ama artık kendini kopyalamaz
+            if (!sp._convertCount) sp._convertCount = 0;
+            if (sp._convertCount >= 2) continue;  // bu yayıcı yoruldu
+            sp._convertCount++;
+
+            // 1 rastgele komşu → +6 ek HP + stres yayıcıya dönüşür (was +10)
             const victim = adjacent[NJOX.Utils.randInt(0, adjacent.length - 1)];
-            victim.hp   += 10;
-            victim.maxHp += 10;
+            victim.hp   += 6;
+            victim.maxHp += 6;
 
             // Zıplama animasyonu
             if (typeof sp.triggerJump === 'function') {

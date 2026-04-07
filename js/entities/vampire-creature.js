@@ -6,6 +6,7 @@ NJOX.VampireCreature = class VampireCreature extends NJOX.Creature {
         super(x, y, hp, NJOX.CREATURE_TYPES.VAMPIRE);
         this.flamePhase    = Math.random() * Math.PI * 2;
         this.drainTotal    = 0;
+        this.drainedBalls  = 0;  // permanent balls drained (for recovery on kill)
         this._storedBalls  = 0;   // ilk 5 top buraya emilir
         this._maxStore     = 5;
         this._hasAbsorbed  = false; // 5 top emildikten sonra true — bir daha emmez

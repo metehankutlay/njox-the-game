@@ -119,9 +119,9 @@ NJOX.HP_VARIANCE         = 0.30; // ±30% random spread
 
 // Ball pickup inverse scaling — growth slows as you get more balls
 // pickupChance = max(MIN, BASE - ballCount × DECAY)
-NJOX.PICKUP_BALL_BASE  = 0.30; // 30% chance per new row at start
-NJOX.PICKUP_BALL_DECAY = 0.005;// reduce by 0.5% per ball owned
-NJOX.PICKUP_BALL_MIN   = 0.10; // never below 10%
+NJOX.PICKUP_BALL_BASE  = 0.40; // 40% chance per new row at start (was 0.30)
+NJOX.PICKUP_BALL_DECAY = 0.004;// reduce by 0.4% per ball owned (was 0.005)
+NJOX.PICKUP_BALL_MIN   = 0.15; // never below 15% (was 0.10)
 
 // Creature types enum
 NJOX.CREATURE_TYPES = {

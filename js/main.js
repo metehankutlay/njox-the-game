@@ -377,6 +377,21 @@ window.NJOX = window.NJOX || {};
             });
         }
 
+        // Vampir öldürüldüğünde: drain ettiği topların %60'ı geri döner
+        // Bu, vampiri aktif olarak öldürmeyi ödüllendiriyor
+        if (creature.type === NJOX.CREATURE_TYPES.VAMPIRE && creature.drainedBalls > 0) {
+            const recovered = Math.floor(creature.drainedBalls * 0.60);
+            if (recovered > 0) {
+                ballManager.totalCount += recovered;
+                NJOX.Sound.ballPickup && NJOX.Sound.ballPickup();
+                game.collectibles.push({
+                    x: creature.x + creature.w / 2,
+                    y: creature.y + creature.h / 2,
+                    type: 'ball', amount: `🧛💀 +${recovered}🎱`, timer: 2.0,
+                });
+            }
+        }
+
         // Combo arttıkça kill başı parçacık azalt — performans
         const deathParticles = Math.max(8, 22 - shotKills * 1.2);
         particles.emit(creature.x + creature.w/2, creature.y + creature.h/2,
@@ -813,10 +828,10 @@ window.NJOX = window.NJOX || {};
                         const dy = best.y - p.y;
                         const len = Math.sqrt(dx * dx + dy * dy) || 1;
                         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy) || 260;
-                        // Yumuşak yönelim: mevcut hız ile hedefe doğru blend
-                        p.vx = p.vx * 0.65 + (dx / len) * speed * 0.35;
-                        p.vy = p.vy * 0.65 + (dy / len) * speed * 0.35;
-                        // Minimum aşağı hız garanti et (ileri geri giderse saçma olur)
+                        // Hafif yönelim: zayıflatıldı (was 0.35 blend, now 0.20)
+                        // Oyuncu kaçınmaya fırsat bulur
+                        p.vx = p.vx * 0.80 + (dx / len) * speed * 0.20;
+                        p.vy = p.vy * 0.80 + (dy / len) * speed * 0.20;
                         if (p.vy < 60) p.vy = 60;
                     }
                 }
@@ -830,14 +845,16 @@ window.NJOX = window.NJOX || {};
                     if (Math.sqrt(dx * dx + dy * dy) < NJOX.BALL_RADIUS + 5.5) {
                         b.active = false;
                         p.active = false;
-                        // Kalıcı drain: top sayısı kalıcı düşer
-                        const drainAmt = Math.max(1, Math.floor(ballManager.totalCount * 0.015));
+                        // Drain: hafifletildi — %0.8/isabet (was %1.5)
+                        // Vampir ölünce drainedBalls'un %60'ı geri döner
+                        const drainAmt = Math.max(1, Math.floor(ballManager.totalCount * 0.008));
                         ballManager.totalCount = Math.max(1, ballManager.totalCount - drainAmt);
+                        if (p.source) p.source.drainedBalls = (p.source.drainedBalls || 0) + drainAmt;
                         particles.emitDeathBurst(p.x, p.y, 8, 6, '#cc44ff');
                         particles.emitDeathBurst(b.x, b.y, 6, 5, '#ffffff');
                         game.collectibles.push({
                             x: p.x, y: p.y,
-                            type: 'dmg', amount: `🧛 -${drainAmt} top!`, timer: 1.5,
+                            type: 'dmg', amount: `🧛 -${drainAmt}🎱`, timer: 1.5,
                         });
                         NJOX.Sound.vampireDrain();
                         break;
@@ -1936,23 +1953,32 @@ window.NJOX = window.NJOX || {};
                 game.shotsRemaining--;
                 ballManager.startLaunch(input.aimAngle, input.launchX);
 
-                // Vampir: player top fırlatınca mor top atar — top sayısına göre scale
-                // N_PROJ: 130 topla ~13 top, her proj totalCount'u kalıcı düşürür → gerçek tehdit
+                // Vampir: player top fırlatınca mor top atar — hafifletilmiş tehdit
+                // N_PROJ: max 5 (was 14), drain 0.008 (was 0.015), homing zayıf
                 if (!bossMode) {
-                    const N_PROJ = Math.min(14, Math.max(4, Math.floor(ballManager.totalCount * 0.10)));
+                    const N_PROJ = Math.min(5, Math.max(2, Math.floor(ballManager.totalCount * 0.04)));
+                    // Tüm vampirlerin aynı anda mermisi max 10 — stack'lenince patlamaz
+                    const existingActive = game._vampireProj.filter(p => p.active).length;
+                    const MAX_TOTAL_PROJ = 10;
+                    let availSlots = Math.max(0, MAX_TOTAL_PROJ - existingActive);
+
                     for (const cr of levelManager.creatures) {
                         if (!cr.alive || cr.type !== NJOX.CREATURE_TYPES.VAMPIRE) continue;
+                        if (availSlots <= 0) break;
                         const vcx = cr.x + cr.w / 2;
                         const vbt = cr.y + cr.h;
-                        for (let i = 0; i < N_PROJ; i++) {
-                            const spread = (i - (N_PROJ - 1) / 2) * 18;
+                        const toSpawn = Math.min(N_PROJ, availSlots);
+                        availSlots -= toSpawn;
+                        for (let i = 0; i < toSpawn; i++) {
+                            const spread = (i - (toSpawn - 1) / 2) * 20;
                             game._vampireProj.push({
                                 x: vcx + spread, y: vbt,
-                                vx: spread * 3,
+                                vx: spread * 2.5,
                                 vy: 180 + Math.random() * 80,
-                                delay: i * 0.07,
+                                delay: i * 0.08,
                                 active: true,
                                 homing: true,
+                                source: cr,  // hangi vampir attı — ölünce toplar geri dönsün
                             });
                         }
                     }
@@ -2045,10 +2071,10 @@ window.NJOX = window.NJOX || {};
                 // can see the jump animation and floating text on the board.
                 game._pendingStressSpread = true;
 
-                // ── Round tamamlama altın bonusu — azaltıldı (ekonomi dengesi) ──
-                // Eski: 1 + level*0.5 + round*0.3 ≈ ch5r5: 4g  (çok kolay skill açılıyordu)
-                // Yeni: level*0.3 ≈ ch1: 0g, ch5: 1g, ch10: 3g — kazanım skill tree ile sınırlı
-                const roundGold = Math.floor(levelManager.currentLevel * 0.3);
+                // ── Round tamamlama altın bonusu ──────────────────────────────
+                // Eski: level*0.3 ≈ ch1: 0g, ch10: 3g  (skill tree erişilemiyordu)
+                // Yeni: 1 + level*0.5 ≈ ch1: 1g, ch5: 3g, ch10: 6g — dengeli kazanım
+                const roundGold = 1 + Math.floor(levelManager.currentLevel * 0.5);
                 game.gold += roundGold;
                 game.collectibles.push({
                     x: NJOX.CANVAS_W / 2, y: NJOX.CANVAS_H * 0.35,
@@ -2474,8 +2500,12 @@ window.NJOX = window.NJOX || {};
         enter() {
             this._timer = 4.0;
             const ch = levelManager.currentLevel;
-            // Stress Shield skill: Son Şans bedavaya
-            this._cost      = (progress.skills.stressShield >= 1) ? 0 : Math.min(60, 15 + ch * 3);
+            // Stress Shield skill veya çok az top kaldıysa: Son Şans bedavaya
+            // Vampir drain sonrası 1-4 topla kalınca altın yoktur → ücretsiz kurtarma
+            const isDestitute = ballManager.totalCount <= 4;
+            this._cost = (progress.skills.stressShield >= 1 || isDestitute)
+                ? 0
+                : Math.min(40, 10 + ch * 2);  // max 40g (was min(60, 15+ch*3))
             this._canAfford = game.gold >= this._cost;
             NJOX.Renderer.triggerShake(7, 0.4);
         },
