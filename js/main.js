@@ -3,6 +3,24 @@ window.NJOX = window.NJOX || {};
 (function () {
     const canvas = document.getElementById('game-canvas');
     const ctx    = canvas.getContext('2d');
+
+    // ── Dynamic canvas height — fills viewport on any phone ───────────────
+    // On tall phones (portrait), the 500:720 ratio leaves empty space at
+    // the bottom. We extend CANVAS_H so the canvas fills 100svh, then
+    // push FLOOR_Y and SHOP_Y down proportionally.
+    {
+        const svh = window.innerHeight;
+        const vw  = window.innerWidth;
+        const cW  = Math.min(vw, svh * 500 / 720); // CSS container width
+        const dH  = Math.max(720, Math.round(500 * svh / cW));
+        if (dH > NJOX.CANVAS_H) {
+            NJOX.CANVAS_H = dH;
+            NJOX.FLOOR_Y  = dH - 80;  // 80px = floor-gap(8) + shop bar(72)
+            NJOX.SHOP_Y   = dH - 72;
+            // NJOX.SHOP_H stays 72
+        }
+    }
+
     canvas.width  = NJOX.CANVAS_W;
     canvas.height = NJOX.CANVAS_H;
 

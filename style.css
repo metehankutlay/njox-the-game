@@ -25,7 +25,7 @@ html, body {
     left: 50%;
     transform: translateX(-50%);
     width: min(100vw, calc(100svh * 500 / 720));
-    height: min(100svh, calc(100vw * 720 / 500));
+    height: 100svh;
 }
 
 #game-canvas {
