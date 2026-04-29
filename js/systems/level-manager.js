@@ -347,7 +347,7 @@ NJOX.LevelManager = class LevelManager {
                 t.isStressed = true;
                 t.hp        += 3;
                 t.maxHp     += 3;
-                events.push({ x: t.x + t.w / 2, y: t.y, amount: '+3 Stres' });
+                events.push({ x: t.x + t.w / 2, y: t.y, amount: '+3 Stress' });
             }
 
             // Dönüşüm limiti: her yayıcı tüm oyun boyunca MAX 2 kez dönüştürür

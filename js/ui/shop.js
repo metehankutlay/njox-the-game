@@ -73,7 +73,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 16px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🛒  MAĞAZA', W / 2, btnY + btnH / 2);
+        ctx.fillText('🛒  SHOP', W / 2, btnY + btnH / 2);
 
         this._openBtn = { x: btnX, y: btnY, w: btnW, h: btnH };
     },
@@ -114,7 +114,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 17px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('🛒  MAĞAZA', W / 2, panelY + headerH / 2);
+        ctx.fillText('🛒  SHOP', W / 2, panelY + headerH / 2);
 
         // Gold (header right)
         ctx.fillStyle = '#ffd700';
@@ -198,7 +198,7 @@ NJOX.ShopUI = {
             ctx.fillText(item.desc, rx + 54, ry + 34);
 
             // Price / FREE badge
-            const priceStr = item.firstFree ? 'BEDAVA' : item.cost + 'g';
+            const priceStr = item.firstFree ? 'FREE' : item.cost + 'g';
             const priceColor = item.firstFree ? '#4ecca3' : canAfford ? '#ffd700' : 'rgba(255,215,0,0.4)';
 
             // Buy button
@@ -221,7 +221,7 @@ NJOX.ShopUI = {
             ctx.font = 'bold 12px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceStr + ' →AL', bX + bW / 2, bY + bH / 2);
+            ctx.fillText(priceStr + ' →BUY', bX + bW / 2, bY + bH / 2);
 
             ctx.restore();
 
@@ -262,7 +262,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 15px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('SATIN ALMA ONAYI', W / 2, panelY + 30);
+        ctx.fillText('PURCHASE CONFIRM', W / 2, panelY + 30);
 
         // Divider
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -299,7 +299,7 @@ NJOX.ShopUI = {
         ctx.fillText(item.desc, panelX + 68, panelY + 88);
 
         // Price
-        const costStr = item.firstFree ? 'BEDAVA' : '-' + item.cost + 'g';
+        const costStr = item.firstFree ? 'FREE' : '-' + item.cost + 'g';
         const costColor = item.firstFree ? '#4ecca3' : '#ffd700';
         ctx.fillStyle = costColor;
         ctx.font = 'bold 14px monospace';
@@ -324,7 +324,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('✓ ONAYLA', btn1X + btnW / 2, btnY2 + btnH / 2);
+        ctx.fillText('✓ CONFIRM', btn1X + btnW / 2, btnY2 + btnH / 2);
         this._confirmBtn = { x: btn1X, y: btnY2, w: btnW, h: btnH };
 
         // VAZGEÇ button
@@ -338,7 +338,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('✕ VAZGEÇ', btn2X + btnW / 2, btnY2 + btnH / 2);
+        ctx.fillText('✕ CANCEL', btn2X + btnW / 2, btnY2 + btnH / 2);
         this._cancelBtn = { x: btn2X, y: btnY2, w: btnW, h: btnH };
     },
 

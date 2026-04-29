@@ -82,23 +82,23 @@ window.NJOX = window.NJOX || {};
     // Her round sonrası 3 kart gösterilir; oyuncu 1 seçer, etkileri o round geçerli
 
     const CARD_POOL = [
-        // ── Pozitif ──────────────────────────────────────────────────────
-        { id:'fire_boost',    icon:'🔥', name:'Ateş',         desc:'Bu round ateş toplar 5× hasar',        type:'positive' },
-        { id:'chain_death',   icon:'💀', name:'Zincirleme',   desc:'Ölüm komşulara 2 hasar sıçrar',         type:'positive' },
-        { id:'extra_shots',   icon:'⚡', name:'+3 Atış',      desc:'Bu round +3 atış hakkı',               type:'positive' },
-        { id:'stress_absorb', icon:'🧘', name:'Stres Emici',  desc:'Stresli ölünce +1 top kazanırsın',     type:'positive' },
-        { id:'hp_drain',      icon:'⚔️', name:'HP Düşür',    desc:'Tüm düşmanlar HP %25 azalır',          type:'positive' },
-        { id:'ball_bonus',    icon:'🎱', name:'+3 Top',       desc:'+3 top kalıcı eklenir',                type:'positive' },
-        { id:'gold_rush',     icon:'💰', name:'Altın',        desc:'+12 altın anında',                     type:'positive' },
-        { id:'rage_mode',     icon:'😤', name:'Öfke',         desc:'Bu round tüm toplar +2 hasar',         type:'positive' },
-        { id:'ice_storm',     icon:'❄️', name:'Buz Fırtınası',desc:'Buz toplar 2 tur dondurur',           type:'positive' },
-        // ── Negatif ──────────────────────────────────────────────────────
-        { id:'ball_thief',    icon:'👻', name:'Top Çal',      desc:'Hemen 2 kalıcı top kaybedersin',       type:'negative' },
-        { id:'blind_round',   icon:'🙈', name:'Kör Atış',     desc:'Bu round nişan çizgisi görünmez',      type:'negative' },
-        { id:'stress_wave',   icon:'🌊', name:'Stres Dalgası',desc:'Tüm düşmanlar strese girer +3 HP',     type:'negative' },
-        { id:'hp_surge',      icon:'💢', name:'Güç Dalgası',  desc:'Tüm düşmanlar HP %30 artar',           type:'negative' },
-        { id:'wrecker_tower', icon:'🗼', name:'Yıkıcı Kule',  desc:'Sahaya iner, her round top sayının %2\'si yakar',   type:'negative' },
-        { id:'spawn_guard',   icon:'⛓️', name:'Nöbetçi',      desc:'2 Zincirli yaratık anında sahaya iner', type:'negative' },
+        // ── Positive ─────────────────────────────────────────────────────
+        { id:'fire_boost',    icon:'🔥', name:'Fire',          desc:'Fire balls deal 5× damage this round', type:'positive' },
+        { id:'chain_death',   icon:'💀', name:'Chain Death',   desc:'Kills chain 2 damage to neighbors',    type:'positive' },
+        { id:'extra_shots',   icon:'⚡', name:'+3 Shots',      desc:'+3 shots this round',                  type:'positive' },
+        { id:'stress_absorb', icon:'🧘', name:'Stress Absorb', desc:'+1 ball when stressed creature dies',  type:'positive' },
+        { id:'hp_drain',      icon:'⚔️', name:'HP Drain',     desc:'All enemies lose 25% HP',              type:'positive' },
+        { id:'ball_bonus',    icon:'🎱', name:'+3 Balls',      desc:'+3 balls permanently added',           type:'positive' },
+        { id:'gold_rush',     icon:'💰', name:'Gold Rush',     desc:'+12 gold instantly',                   type:'positive' },
+        { id:'rage_mode',     icon:'😤', name:'Rage',          desc:'+2 damage to all balls this round',    type:'positive' },
+        { id:'ice_storm',     icon:'❄️', name:'Ice Storm',     desc:'Ice balls freeze for 2 turns',         type:'positive' },
+        // ── Negative ─────────────────────────────────────────────────────
+        { id:'ball_thief',    icon:'👻', name:'Ball Thief',    desc:'Lose 2 permanent balls now',           type:'negative' },
+        { id:'blind_round',   icon:'🙈', name:'Blind Shot',    desc:'Aim line hidden this round',           type:'negative' },
+        { id:'stress_wave',   icon:'🌊', name:'Stress Wave',   desc:'All enemies get stressed +3 HP',       type:'negative' },
+        { id:'hp_surge',      icon:'💢', name:'HP Surge',      desc:'All enemies gain 30% HP',              type:'negative' },
+        { id:'wrecker_tower', icon:'🗼', name:'Wrecker Tower', desc:'Burns 2% of your balls each round',    type:'negative' },
+        { id:'spawn_guard',   icon:'⛓️', name:'Guard Spawn',   desc:'2 Chained creatures deployed now',     type:'negative' },
     ];
 
     function _pickRandomCards(n) {
@@ -237,13 +237,13 @@ window.NJOX = window.NJOX || {};
         if (fsm.currentName === 'TITLE') {
             const r = NJOX.TitleScreen._changeBtnRect;
             if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
-                input.consumeLaunch(); // tıklamayı tüket — TITLE update MAP'e geçmesin
+                input.consumeLaunch(); // consume click — prevent TITLE update going to MAP
                 modal.show({
-                    title:       'Stresini değiştir',
+                    title:       'Change your stress',
                     body:        '',
                     showInput:   true,
-                    placeholder: 'stresini yaz...',
-                    submitText:  'KAYDET',
+                    placeholder: 'type your stress...',
+                    submitText:  'SAVE',
                     onSubmit(val) {
                         stressName       = val;
                         NJOX._stressName = val;
@@ -279,13 +279,12 @@ window.NJOX = window.NJOX || {};
                     const result = progress.purchaseSkill(btn.id, game.gold);
                     if (result.ok) {
                         game.gold = result.newGold;
-                        // Iron Fist anında mevcut oturuma uygulanır
                         if (btn.id === 'ironFist') {
                             ballManager.bonusDamage = (ballManager.bonusDamage || 0) + 1;
                         }
-                        st._msg = { text: '✓ Satın alındı!', timer: 1.8, color: '#4ecca3' };
+                        st._msg = { text: '✓ Purchased!', timer: 1.8, color: '#4ecca3' };
                     } else {
-                        st._msg = { text: '⚠ Yetersiz gold', timer: 1.5, color: '#e94560' };
+                        st._msg = { text: '⚠ Not enough gold', timer: 1.5, color: '#e94560' };
                     }
                     return;
                 }
@@ -513,10 +512,8 @@ window.NJOX = window.NJOX || {};
 
                 // ── Stres ismi BÜYÜK patlaması ───────────────────────────
                 const sName = NJOX._stressName;
-                // Türkçe büyük harf dönüşümü (i→İ, ı→I)
                 const trUpper = s => {
-                    try { return s.toLocaleUpperCase('tr-TR'); } catch(e) {}
-                    return s.replace(/i/g, 'İ').replace(/ı/g, 'I').toUpperCase();
+                    try { return s.toLocaleUpperCase(); } catch(e) { return s.toUpperCase(); }
                 };
                 if (sName) {
                     const upper = trUpper(sName);
@@ -622,7 +619,7 @@ window.NJOX = window.NJOX || {};
             if (shotKills % threshold === 0) {
                 game.shotsRemaining++;
                 game.collectibles.push({ x: creature.x + creature.w/2 + 10,
-                    y: creature.y - 10, type:'ball', amount:'+1 atış', timer:1.4 });
+                    y: creature.y - 10, type:'ball', amount:'+1 shot', timer:1.4 });
             }
         }
 
@@ -923,7 +920,7 @@ window.NJOX = window.NJOX || {};
                         tw.alive = false;
                         particles.emitDeathBurst(tw.x, tw.y, tw.w, tw.h, '#ff6644');
                         game.collectibles.push({ x: tw.x + tw.w/2, y: tw.y - 10,
-                            type:'ball', amount:'🗼 YIKILDI!', timer:2.5 });
+                            type:'ball', amount:'🗼 DESTROYED!', timer:2.5 });
                         NJOX.Renderer.triggerShake(5, 0.2);
                     }
                 }
@@ -1187,9 +1184,9 @@ window.NJOX = window.NJOX || {};
             c.font        = 'bold 14px monospace';
             c.textAlign   = 'center';
             c.textBaseline = 'middle';
-            const label = shots === 1 ? '⚠  SON ATIŞ  ⚠'
-                        : shots === 2 ? '⚠  SON 2 ATIŞ  ⚠'
-                        :               '⚠  SON 3 ATIŞ  ⚠';
+            const label = shots === 1 ? '⚠  LAST SHOT  ⚠'
+                        : shots === 2 ? '⚠  LAST 2 SHOTS  ⚠'
+                        :               '⚠  LAST 3 SHOTS  ⚠';
             c.fillText(label, NJOX.CANVAS_W / 2, NJOX.FLOOR_Y - 19);
             c.restore();
         }
@@ -1424,11 +1421,11 @@ window.NJOX = window.NJOX || {};
                     // Son aşama geçildi → stres adı giriş modal'ı
                     this._done = true;
                     modal.show({
-                        title: 'Stresin adı ne?',
-                        body: 'Öldürmek istediğin şeye bir isim ver.',
+                        title: 'What is your stress?',
+                        body: 'Give a name to what you want to destroy.',
                         showInput:   true,
-                        placeholder: 'stresini yaz...',
-                        submitText:  'SAVAŞA GİR',
+                        placeholder: 'type your stress...',
+                        submitText:  'FIGHT IT',
                         onSubmit(val) {
                             stressName       = val;
                             NJOX._stressName = val;
@@ -1471,10 +1468,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 18px monospace';
-                c.fillText('Bu kareler...', CX, 210);
+                c.fillText('These squares...', CX, 210);
                 c.fillStyle = 'rgba(255,255,255,0.55)';
                 c.font      = '13px monospace';
-                c.fillText('kafanda yaşayan stres.', CX, 235);
+                c.fillText('are the stress living in your mind.', CX, 235);
 
             } else if (this._phase === 1) {
                 // Üç yaratık yan yana — "Her gün büyüyor"
@@ -1493,10 +1490,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 18px monospace';
-                c.fillText('Her gün büyüyor...', CX, 210);
+                c.fillText('Growing every day...', CX, 210);
                 c.fillStyle = 'rgba(255,255,255,0.55)';
                 c.font      = '13px monospace';
-                c.fillText('kafana doluyor, seni yoruyor.', CX, 235);
+                c.fillText('filling your head, wearing you out.', CX, 235);
 
             } else {
                 // Kırmızı tehdit — "Savaşmanın vakti"
@@ -1516,10 +1513,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 19px monospace';
-                c.fillText('Savaşmanın vakti geldi.', CX, 205);
+                c.fillText('Time to fight.', CX, 205);
                 c.fillStyle = '#e94560';
                 c.font      = '12px monospace';
-                c.fillText('Odağın tek bir şey: stresi öldür.', CX, 228);
+                c.fillText('One goal: kill the stress.', CX, 228);
             }
 
             // Faz noktaları (alt)
@@ -1537,7 +1534,7 @@ window.NJOX = window.NJOX || {};
                 c.globalAlpha = this._alpha * pulse;
                 c.fillStyle   = 'rgba(255,255,255,0.4)';
                 c.font        = '11px monospace';
-                c.fillText(this._phase < 2 ? 'dokun →' : 'dokun — başla', CX, 418);
+                c.fillText(this._phase < 2 ? 'tap →' : 'tap — begin', CX, 418);
             }
 
             c.restore();
@@ -1734,16 +1731,16 @@ window.NJOX = window.NJOX || {};
     fsm.add('ROUND_INTRO', {
         enter() {
             const TYPE_INFO = {
-                splitter:       { name:'Bölücü',    tag:'ikiye bölünür', color: NJOX.COLORS.SPLITTER,        expr:'angry'  },
-                eater:          { name:'Yönlü',     tag:'tek yönden',    color: NJOX.COLORS.EATER,           expr:'angry'  },
-                counter:        { name:'Sayaç',     tag:'X vuruşta',     color: NJOX.COLORS.COUNTER,         expr:'normal' },
-                reactive:       { name:'Reaktif',   tag:'güçlenir',      color: NJOX.COLORS.REACTIVE,        expr:'scared' },
-                vampire:        { name:'Vampir',    tag:'top emer',      color: NJOX.COLORS.VAMPIRE,         expr:'angry'  },
-                ball_carrier:   { name:'Taşıyıcı', tag:'+1 top',        color: NJOX.COLORS.BALL_CARRIER,    expr:'normal' },
-                vomiter:        { name:'Kusturan',  tag:'2 yavru',       color: NJOX.COLORS.VOMITER,         expr:'normal' },
-                stress_spreader:{ name:'Yayıcı',   tag:'stres bulaşır', color: NJOX.COLORS.STRESS_SPREADER, expr:'angry'  },
-                shield:         { name:'Kalkan',    tag:'üstten vur',    color: NJOX.COLORS.SHIELD,          expr:'normal' },
-                chained:        { name:'Zincirli', tag:'2 vuruş',       color: NJOX.COLORS.CHAINED,         expr:'normal' },
+                splitter:       { name:'Splitter', tag:'splits in two',   color: NJOX.COLORS.SPLITTER,        expr:'angry'  },
+                eater:          { name:'Eater',    tag:'one-side only',   color: NJOX.COLORS.EATER,           expr:'angry'  },
+                counter:        { name:'Counter',  tag:'X hits',          color: NJOX.COLORS.COUNTER,         expr:'normal' },
+                reactive:       { name:'Reactive', tag:'grows stronger',  color: NJOX.COLORS.REACTIVE,        expr:'scared' },
+                vampire:        { name:'Vampire',  tag:'drains balls',    color: NJOX.COLORS.VAMPIRE,         expr:'angry'  },
+                ball_carrier:   { name:'Carrier',  tag:'+1 ball',         color: NJOX.COLORS.BALL_CARRIER,    expr:'normal' },
+                vomiter:        { name:'Vomiter',  tag:'2 offspring',     color: NJOX.COLORS.VOMITER,         expr:'normal' },
+                stress_spreader:{ name:'Spreader', tag:'stress spreads',  color: NJOX.COLORS.STRESS_SPREADER, expr:'angry'  },
+                shield:         { name:'Shield',   tag:'hit from top',    color: NJOX.COLORS.SHIELD,          expr:'normal' },
+                chained:        { name:'Chained',  tag:'2 hits',          color: NJOX.COLORS.CHAINED,         expr:'normal' },
             };
 
             // Sadece YENİ eklenen satır — en üst satırdaki yaratıklar
@@ -1876,7 +1873,7 @@ window.NJOX = window.NJOX || {};
                     c.stroke();
                     c.fillStyle    = '#ffffff';
                     c.font         = 'bold 16px monospace';
-                    c.fillText('ATLA  →', CX, btnY + 21);
+                    c.fillText('SKIP  →', CX, btnY + 21);
                     c.globalAlpha = alpha;
                 }
 
@@ -1905,7 +1902,7 @@ window.NJOX = window.NJOX || {};
                 if (isLastRound) {
                     c.fillStyle = '#ffd700';
                     c.font      = 'bold 13px monospace';
-                    c.fillText('⚠  SON RAUND  —  BOSS GELİYOR  ⚠', CX, CY + 26);
+                    c.fillText('⚠  LAST ROUND  —  BOSS INCOMING  ⚠', CX, CY + 26);
                 }
 
                 const dotGap = 26;
@@ -1944,7 +1941,7 @@ window.NJOX = window.NJOX || {};
                     if (!game.collectibles) game.collectibles = [];
                     game.collectibles.push({
                         x: ev.x, y: ev.y,
-                        type: 'stress', amount: ev.amount || '+20 Stres', timer: 2.5,
+                        type: 'stress', amount: ev.amount || '+20 Stress', timer: 2.5,
                     });
                 }
             }
@@ -2017,7 +2014,7 @@ window.NJOX = window.NJOX || {};
                 c.font         = 'bold 11px monospace';
                 c.textAlign    = 'center';
                 c.textBaseline = 'middle';
-                c.fillText('🙈 KÖR ATIŞ', NJOX.CANVAS_W / 2, NJOX.FLOOR_Y - 40);
+                c.fillText('🙈 BLIND SHOT', NJOX.CANVAS_W / 2, NJOX.FLOOR_Y - 40);
                 c.restore();
             }
         },
@@ -2181,7 +2178,7 @@ window.NJOX = window.NJOX || {};
             c.font = 'bold 18px monospace';
             c.textAlign = 'center';
             c.textBaseline = 'middle';
-            c.fillText('— BOSS HAZIRLANIYOR —', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 80);
+            c.fillText('— BOSS PREPARING —', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 80);
             c.restore();
         },
         exit() {}
@@ -2417,7 +2414,7 @@ window.NJOX = window.NJOX || {};
                 if (this._dailyBonus) {
                     c.fillStyle = '#ffd700';
                     c.font      = 'bold 11px monospace';
-                    c.fillText('📅 GÜNLÜK GÖREV: +15g', CX, CY + 102);
+                    c.fillText('📅 DAILY CHALLENGE: +15g', CX, CY + 102);
                 }
 
                 c.globalAlpha = 1;
@@ -2553,23 +2550,23 @@ window.NJOX = window.NJOX || {};
 
             c.fillStyle = '#ff4444';
             c.font      = 'bold 18px monospace';
-            c.fillText('⚠  STRES DİBİNE ULAŞTI  ⚠', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 56);
+            c.fillText('⚠  STRESS REACHED THE FLOOR  ⚠', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 56);
 
             if (this._canAfford) {
                 c.fillStyle = '#ffd700';
                 c.font      = 'bold 20px monospace';
-                const costLabel = this._cost === 0 ? '🛡 SON ŞANS: BEDAVA' : 'SON ŞANS: ' + this._cost + 'g';
+                const costLabel = this._cost === 0 ? '🛡 LAST CHANCE: FREE' : 'LAST CHANCE: ' + this._cost + 'g';
                 c.fillText(costLabel, NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 14);
                 c.fillStyle = 'rgba(255,255,255,0.65)';
                 c.font      = '12px monospace';
-                c.fillText('Tıkla — o stres bloğunu çöpe at!', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
+                c.fillText('Tap — throw that stress block away!', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
             } else {
                 c.fillStyle = '#aaa';
                 c.font      = '16px monospace';
-                c.fillText('Yetersiz gold', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 8);
+                c.fillText('Not enough gold', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 8);
                 c.font      = '11px monospace';
                 c.fillStyle = 'rgba(255,255,255,0.4)';
-                c.fillText('(gereken: ' + this._cost + 'g)', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
+                c.fillText('(need: ' + this._cost + 'g)', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
             }
 
             // Geri sayım çubuğu
@@ -2624,14 +2621,14 @@ window.NJOX = window.NJOX || {};
 
             // Kill count — en tepede, büyük
             if (game.totalKills > 0) {
-                const killName = NJOX._stressName || 'stres';
+                const killName = NJOX._stressName || 'stress';
                 const pulse    = 0.75 + 0.25 * Math.abs(Math.sin(this._timer * 1.6));
                 c.globalAlpha  = pulse;
                 c.textAlign    = 'center';
                 c.textBaseline = 'middle';
                 c.fillStyle    = '#4ecca3';
                 c.font         = 'bold 20px monospace';
-                c.fillText(game.totalKills + ' adet ' + killName + ' öldürdün', CX, 38);
+                c.fillText('You killed ' + game.totalKills + ' ' + killName, CX, 38);
                 c.globalAlpha  = 1;
             }
 
@@ -2640,7 +2637,7 @@ window.NJOX = window.NJOX || {};
             c.textBaseline = 'middle';
             c.fillStyle    = rev ? 'rgba(255,215,0,0.8)' : '#ffd700';
             c.font         = 'bold 17px monospace';
-            c.fillText(rev ? 'KADER AÇIKLANDI' : 'KADER KARTLARI', CX, CY - 115);
+            c.fillText(rev ? 'FATE REVEALED' : 'FATE CARDS', CX, CY - 115);
 
             c.fillStyle = 'rgba(255,255,255,0.28)';
             c.font      = '9px monospace';
@@ -2703,7 +2700,7 @@ window.NJOX = window.NJOX || {};
                     c.globalAlpha = pulse * 0.55;
                     c.font = 'bold 9px monospace';
                     c.fillStyle = 'rgba(180,200,255,0.9)';
-                    c.fillText('TIKLA', cx + CARD_W / 2, cardY + CARD_H - 18);
+                    c.fillText('TAP', cx + CARD_W / 2, cardY + CARD_H - 18);
                     c.globalAlpha = 1;
 
                     this._btnRects.push({ x: cx, y: cardY, w: CARD_W, h: CARD_H });
@@ -2719,7 +2716,7 @@ window.NJOX = window.NJOX || {};
                         c.font = 'bold 9px monospace';
                         c.textAlign = 'center';
                         c.textBaseline = 'middle';
-                        c.fillText('⚠ OLUMSUZ', cx + CARD_W / 2, cardY + 9);
+                        c.fillText('⚠ NEGATIVE', cx + CARD_W / 2, cardY + 9);
                     }
 
                     // İkon
@@ -2752,7 +2749,7 @@ window.NJOX = window.NJOX || {};
                     if (isChosen) {
                         c.fillStyle = isNeg ? '#ff4444' : '#ffd700';
                         c.font      = 'bold 10px monospace';
-                        c.fillText(isNeg ? '✗ KÖTÜ ŞANS' : '✓ SEÇİLDİ', cx + CARD_W / 2, lblY);
+                        c.fillText(isNeg ? '✗ BAD LUCK' : '✓ CHOSEN', cx + CARD_W / 2, lblY);
                     } else {
                         c.fillStyle = 'rgba(255,255,255,0.25)';
                         c.font      = '10px monospace';
@@ -2780,7 +2777,7 @@ window.NJOX = window.NJOX || {};
                 c.font         = 'bold 11px monospace';
                 c.textAlign    = 'center';
                 c.textBaseline = 'middle';
-                c.fillText('ATLA ▶', CX, skipY + 14);
+                c.fillText('SKIP ▶', CX, skipY + 14);
                 c.globalAlpha = 1;
                 this._skipRect = { x: skipX, y: skipY, w: skipW, h: skipH };
             } else {
@@ -2820,7 +2817,7 @@ window.NJOX = window.NJOX || {};
             // ── Başlık ───────────────────────────────────────────────
             c.fillStyle = '#ffd700';
             c.font      = 'bold 20px monospace';
-            c.fillText('⚡ BECERİ AĞACI', CX, 46);
+            c.fillText('⚡ SKILL TREE', CX, 46);
 
             // Gold gösterimi
             c.fillStyle = '#ffd700';
@@ -2902,7 +2899,7 @@ window.NJOX = window.NJOX || {};
                     c.font         = 'bold 12px monospace';
                     c.textAlign    = 'center';
                     c.textBaseline = 'middle';
-                    c.fillText(cost + 'g AL', btnX + btnW / 2, btnY + btnH / 2);
+                    c.fillText(cost + 'g BUY', btnX + btnW / 2, btnY + btnH / 2);
 
                     // Tıklama alanı
                     this._btnRects.push({ id, x: btnX, y: btnY, w: btnW, h: btnH });
@@ -2923,7 +2920,7 @@ window.NJOX = window.NJOX || {};
             c.font         = 'bold 13px monospace';
             c.textAlign    = 'center';
             c.textBaseline = 'middle';
-            c.fillText('← HARİTA', CX, backY + backH / 2);
+            c.fillText('← MAP', CX, backY + backH / 2);
             this._backRect = { x: backX, y: backY, w: backW, h: backH };
 
             // ── Bildirim mesajı ──────────────────────────────────────

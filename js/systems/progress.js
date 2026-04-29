@@ -128,11 +128,10 @@ NJOX.Progress = {
 
     // ── Skill Tree ───────────────────────────────────────────────────────────
     SKILL_DEFS: {
-        // Iron Fist: pahalı — oyun geç açılmalı, 1 seviye bile fark yaratır
-        ironFist:     { maxLevel: 3, costs: [80, 180, 350], name: 'Demir Yumruk',   desc: 'Topların hasarı +%12 artar (max +%36)' },
-        nerveSystem:  { maxLevel: 1, costs: [90],           name: 'Sinir Sistemi',  desc: 'Yeni oyunda topların %50\'si korunur' },
-        stressShield: { maxLevel: 1, costs: [120],          name: 'Stres Kalkanı',  desc: 'Son Şans hakkı altın gerekmez' },
-        bloodTaste:   { maxLevel: 2, costs: [70, 140],      name: 'Kan Tadı',       desc: 'Her 5 kill +1 atış hakkı (seri başına)' },
+        ironFist:     { maxLevel: 3, costs: [80, 180, 350], name: 'Iron Fist',      desc: 'Ball damage +12% per level (max +36%)' },
+        nerveSystem:  { maxLevel: 1, costs: [90],           name: 'Nerve System',   desc: 'New game retains 50% of your balls' },
+        stressShield: { maxLevel: 1, costs: [120],          name: 'Stress Shield',  desc: 'Last Chance costs no gold' },
+        bloodTaste:   { maxLevel: 2, costs: [70, 140],      name: 'Blood Taste',    desc: 'Every 5 kills grants +1 shot' },
     },
 
     getSkillCost(id) {

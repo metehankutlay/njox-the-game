@@ -16,20 +16,34 @@ NJOX.Sound = {
                 this._ctx = new (window.AudioContext || window.webkitAudioContext)();
             } catch(e) { this.muted = true; return; }
         }
+        if (this._ctx.state === 'closed') {
+            // Tarayıcı bağlamı kapattı — sıfırdan yarat
+            try {
+                this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) { this.muted = true; return; }
+        }
         if (this._ctx.state === 'suspended') {
-            this._ctx.resume();
+            this._ctx.resume().catch(() => {});
         }
     },
 
     // Call once at startup — adds visibility listener for tab-switch resume
     init() {
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                // Tab'e döndüğünde: AudioContext'i resume et + stuck sayacı sıfırla
-                if (this._ctx && this._ctx.state === 'suspended') {
-                    this._ctx.resume();
+            if (document.hidden) {
+                // Tab gizlenince: oscillatör onended'lar artık tetiklenmeyebilir → sıfırla
+                this._activeOsc = 0;
+            } else {
+                // Tab'e döndüğünde: sayacı temizle + AudioContext'i canlandır
+                this._activeOsc = 0;
+                if (!this._ctx) return;
+                if (this._ctx.state === 'closed') {
+                    // Bazı tarayıcılar arka planda context'i tamamen kapatır
+                    // → bir sonraki kullanıcı hareketiyle unlock() yeniden yaratır
+                    this._ctx = null;
+                } else if (this._ctx.state === 'suspended') {
+                    this._ctx.resume().catch(() => { this._ctx = null; });
                 }
-                this._activeOsc = 0; // oscillatörler tab'de takılı kalabilir
             }
         });
         // Also resume on any touch/click (mobile browsers require user gesture)
@@ -40,7 +54,8 @@ NJOX.Sound = {
 
     _get() {
         if (this.muted || !this._ctx) return null;
-        if (this._ctx.state === 'suspended') this._ctx.resume();
+        if (this._ctx.state === 'closed') { this._ctx = null; return null; }
+        if (this._ctx.state === 'suspended') this._ctx.resume().catch(() => {});
         // Safety: onended bazen tetiklenmez (tab suspend, GC) → sayaç sıkışır
         // 2s boyunca yeni ses gelmemişse sayacı sıfırla
         if (this._activeOsc > 0 && this._lastToneTime && Date.now() - this._lastToneTime > 2000) {

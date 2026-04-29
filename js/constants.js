@@ -39,10 +39,10 @@ NJOX.BOSS_HP_MULTIPLIER   = 11;   // yaratıklara göre 11x tanklı (was 3)
 
 // Shop prices
 NJOX.SHOP = {
-    FIRE_BALL:  { cost: 10, label: '🔥 ATEŞ TOPU',  color: '#ff4444', desc: 'Sonraki 5 top · 3× hasar verir',     count: 5 },
-    BOMB_BALL:  { cost: 18, label: '💣 BOMBA TOPU', color: '#ff6600', desc: 'Sonraki 3 top · AoE patlama hasarı',  count: 3 },
-    GHOST_BALL: { cost: 14, label: '👻 HAYALET',    color: '#aaaaff', desc: 'Sonraki 5 top · nüfuz eder + 2× hasar', count: 5 },
-    ICE_BALL:   { cost: 12, label: '❄️ BUZ TOPU',   color: '#88ddff', desc: 'Sonraki 5 top · düşmanı dondurur',   count: 5 },
+    FIRE_BALL:  { cost: 10, label: '🔥 FIRE BALL',  color: '#ff4444', desc: 'Next 5 balls · 3× damage',              count: 5 },
+    BOMB_BALL:  { cost: 18, label: '💣 BOMB BALL',  color: '#ff6600', desc: 'Next 3 balls · AoE explosion damage',   count: 3 },
+    GHOST_BALL: { cost: 14, label: '👻 GHOST',       color: '#aaaaff', desc: 'Next 5 balls · piercing + 2× damage',  count: 5 },
+    ICE_BALL:   { cost: 12, label: '❄️ ICE BALL',   color: '#88ddff', desc: 'Next 5 balls · freezes enemies',        count: 5 },
 };
 
 // Colors

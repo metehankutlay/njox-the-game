@@ -189,7 +189,7 @@ NJOX.WorldMap = (function () {
             ctx.font = 'bold 13px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('⚡ BECERİ AĞACI', stX + stW / 2, stY + stH / 2);
+            ctx.fillText('⚡ SKILL TREE', stX + stW / 2, stY + stH / 2);
             _skillTreeBtn = { x: stX, y: stY, w: stW, h: stH };
         }
 
@@ -207,7 +207,7 @@ NJOX.WorldMap = (function () {
             ctx.font = 'bold 13px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(isDailyAvail ? '📅 GÜNLÜK GÖREV' : '✓ BUGÜN TAMAM', dlX + dlW / 2, dlY + dlH / 2);
+            ctx.fillText(isDailyAvail ? '📅 DAILY CHALLENGE' : '✓ DONE TODAY', dlX + dlW / 2, dlY + dlH / 2);
             _dailyBtn = { x: dlX, y: dlY, w: dlW, h: dlH };
         }
 
@@ -472,7 +472,7 @@ NJOX.WorldMap = (function () {
             ctx.fillStyle = 'rgba(255,215,0,0.65)';
             ctx.font      = '12px monospace';
             ctx.fillText(
-                'Ödül: ' + info.base + 'g sabit + ' + info.maxLoot + 'g\'a kadar ganimet',
+                'Reward: ' + info.base + 'g fixed + up to ' + info.maxLoot + 'g loot',
                 cx, y
             );
             y += 28;
@@ -491,7 +491,7 @@ NJOX.WorldMap = (function () {
             ctx.fillStyle    = canAfford ? '#ffd700' : 'rgba(255,215,0,0.3)';
             ctx.font         = 'bold 14px monospace';
             ctx.textBaseline = 'middle';
-            ctx.fillText('↺ TEKRAR  –' + cost + 'g', cx, y + btnH / 2);
+            ctx.fillText('↺ REPLAY  –' + cost + 'g', cx, y + btnH / 2);
 
             if (canAfford) {
                 _replayBtn = { x: btnX, y, w: btnW, h: btnH };
@@ -500,7 +500,7 @@ NJOX.WorldMap = (function () {
                 ctx.fillStyle    = 'rgba(255,100,100,0.5)';
                 ctx.font         = '12px monospace';
                 ctx.textBaseline = 'top';
-                ctx.fillText(cost - gold + 'g daha gerekli', cx, y);
+                ctx.fillText(cost - gold + 'g more needed', cx, y);
             }
 
         // ── Locked chapter ───────────────────────────────────────────────
@@ -508,11 +508,11 @@ NJOX.WorldMap = (function () {
             ctx.fillStyle    = 'rgba(255,255,255,0.3)';
             ctx.font         = '13px monospace';
             ctx.textBaseline = 'top';
-            ctx.fillText('🔒  ' + (_selected - 1) + '. Bölümü bitir', cx, y);
+            ctx.fillText('🔒  Complete Ch ' + (_selected - 1) + ' first', cx, y);
             y += 24;
             ctx.font      = '12px monospace';
             ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillText('Bu bölümün kilidi açılır', cx, y);
+            ctx.fillText('This chapter will unlock', cx, y);
         }
     }
 

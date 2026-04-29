@@ -62,10 +62,10 @@ NJOX.TitleScreen = {
             const CX    = NJOX.CANVAS_W / 2;
             const baseY = 290 + bounce * 0.4;
 
-            // Hedef etiketi
+            // Target label
             ctx.fillStyle = 'rgba(255,255,255,0.35)';
             ctx.font      = '11px monospace';
-            ctx.fillText('HEDEF', CX, baseY);
+            ctx.fillText('TARGET', CX, baseY);
 
             // İsim kutusu — glow'lu, belirgin
             const nameW = 260, nameH = 40;
@@ -104,7 +104,7 @@ NJOX.TitleScreen = {
 
             ctx.fillStyle = '#ffffff';
             ctx.font      = 'bold 13px monospace';
-            ctx.fillText('✏  STRESİNİ DEĞİŞTİR', CX, btnY + btnH / 2 + 1);
+            ctx.fillText('✏  CHANGE STRESS', CX, btnY + btnH / 2 + 1);
 
             this._changeBtnRect = { x: btnX, y: btnY, w: btnW, h: btnH };
         }
