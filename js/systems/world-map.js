@@ -35,21 +35,32 @@ NJOX.WorldMap = (function () {
     let _onNewGame     = null;
     let _onSkillTree   = null;
     let _onDailyChallenge = null;
+    let _onPortal      = null;
+    let _onReturnPortal= null;
+    let _refUrl        = '';
 
     // Button rects (computed each render)
-    let _newGameBtn    = null;
-    let _skillTreeBtn  = null;
-    let _dailyBtn      = null;
+    let _newGameBtn      = null;
+    let _skillTreeBtn    = null;
+    let _dailyBtn        = null;
+    let _portalBtn       = null;
+    let _returnPortalBtn = null;
+
+    // Portal glow animation timer
+    let _portalGlowT = 0;
 
     // ── Public API ───────────────────────────────────────────────────────
 
-    function init(progress, onPlay, onReplay, onNewGame, onSkillTree, onDailyChallenge) {
+    function init(progress, onPlay, onReplay, onNewGame, onSkillTree, onDailyChallenge, portalCfg) {
         _progress          = progress;
         _onPlay            = onPlay;
         _onReplay          = onReplay;
         _onNewGame         = onNewGame;
         _onSkillTree       = onSkillTree       || null;
         _onDailyChallenge  = onDailyChallenge  || null;
+        _onPortal          = (portalCfg && portalCfg.onPortal)       || null;
+        _onReturnPortal    = (portalCfg && portalCfg.onReturnPortal)  || null;
+        _refUrl            = (portalCfg && portalCfg.refUrl)          || '';
         _selected  = progress.currentChapter;
         _pulseT    = 0;
 
@@ -60,7 +71,8 @@ NJOX.WorldMap = (function () {
     }
 
     function update(dt, gold) {
-        _pulseT += dt;
+        _pulseT      += dt;
+        _portalGlowT += dt;
         // Smooth scroll lerp
         _scrollX += (_targetScrollX - _scrollX) * Math.min(1, dt * 12);
     }
@@ -81,6 +93,18 @@ NJOX.WorldMap = (function () {
         // Daily Challenge button
         if (_dailyBtn && _inRect(x, y, _dailyBtn)) {
             if (_onDailyChallenge) _onDailyChallenge();
+            return;
+        }
+
+        // Vibe Jam Portal button
+        if (_portalBtn && _inRect(x, y, _portalBtn)) {
+            if (_onPortal) _onPortal();
+            return;
+        }
+
+        // Return portal button (only when came from another game)
+        if (_returnPortalBtn && _inRect(x, y, _returnPortalBtn)) {
+            if (_onReturnPortal) _onReturnPortal();
             return;
         }
 
@@ -276,7 +300,80 @@ NJOX.WorldMap = (function () {
         ctx.font = '11px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText('‹ › scroll  ·  tap chapter to select', W / 2, H - 62);
+        ctx.fillText('‹ › scroll  ·  tap chapter to select', W / 2, H - 98);
+
+        // ── Vibe Jam Portal ─────────────────────────────────────────────
+        _portalBtn       = null;
+        _returnPortalBtn = null;
+
+        const pvY  = H - 96;
+        const pvH  = 34;
+        const glow = 0.5 + 0.5 * Math.sin(_portalGlowT * 2.2);
+
+        if (_refUrl) {
+            // Split row: EXIT portal (left) + RETURN portal (right)
+            const halfW = Math.floor((W - 36) / 2);
+            const exitX = 12;
+            const retX  = W - 12 - halfW;
+
+            // Exit → Vibe Jam hub
+            ctx.save();
+            ctx.shadowColor = `rgba(168,85,247,${glow})`;
+            ctx.shadowBlur  = 10 + glow * 8;
+            ctx.fillStyle   = 'rgba(88,28,135,0.35)';
+            NJOX.Utils.roundRect(ctx, exitX, pvY, halfW, pvH, 7);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(168,85,247,${0.5 + glow * 0.35})`;
+            ctx.lineWidth   = 1.5;
+            ctx.stroke();
+            ctx.fillStyle    = '#d8b4fe';
+            ctx.font         = 'bold 11px monospace';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🌀 VIBE JAM PORTAL', exitX + halfW / 2, pvY + pvH / 2);
+            ctx.restore();
+            _portalBtn = { x: exitX, y: pvY, w: halfW, h: pvH };
+
+            // Return → origin game
+            const rg = 0.5 + 0.5 * Math.sin(_portalGlowT * 2.2 + Math.PI);
+            ctx.save();
+            ctx.shadowColor = `rgba(56,189,248,${rg})`;
+            ctx.shadowBlur  = 8 + rg * 6;
+            ctx.fillStyle   = 'rgba(8,47,73,0.4)';
+            NJOX.Utils.roundRect(ctx, retX, pvY, halfW, pvH, 7);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(56,189,248,${0.4 + rg * 0.35})`;
+            ctx.lineWidth   = 1.5;
+            ctx.stroke();
+            ctx.fillStyle    = '#7dd3fc';
+            ctx.font         = 'bold 11px monospace';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('↩ RETURN PORTAL', retX + halfW / 2, pvY + pvH / 2);
+            ctx.restore();
+            _returnPortalBtn = { x: retX, y: pvY, w: halfW, h: pvH };
+
+        } else {
+            // Exit portal only — centered
+            const pW = 200;
+            const pX = (W - pW) / 2;
+            ctx.save();
+            ctx.shadowColor = `rgba(168,85,247,${glow})`;
+            ctx.shadowBlur  = 10 + glow * 10;
+            ctx.fillStyle   = 'rgba(88,28,135,0.35)';
+            NJOX.Utils.roundRect(ctx, pX, pvY, pW, pvH, 7);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(168,85,247,${0.5 + glow * 0.4})`;
+            ctx.lineWidth   = 1.5;
+            ctx.stroke();
+            ctx.fillStyle    = '#d8b4fe';
+            ctx.font         = 'bold 13px monospace';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🌀  VIBE JAM PORTAL', W / 2, pvY + pvH / 2);
+            ctx.restore();
+            _portalBtn = { x: pX, y: pvY, w: pW, h: pvH };
+        }
     }
 
     // ── Private helpers ─────────────────────────────────────────────────

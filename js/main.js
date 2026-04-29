@@ -71,6 +71,37 @@ window.NJOX = window.NJOX || {};
     // ── Daily / mode flags ────────────────────────────────────────────────
     let dailyMode        = false;    // true → bu run daily challenge'tan başladı
 
+    // ── Vibe Jam Portal ───────────────────────────────────────────────────
+    const _urlParams  = new URLSearchParams(window.location.search);
+    const fromPortal  = _urlParams.get('portal') === 'true';
+    const refUrl      = _urlParams.get('ref') || '';
+
+    // Redirect the player to the Vibe Jam portal hub
+    function _goToVibeJamPortal() {
+        const hp     = Math.min(100, Math.max(1, ballManager.totalCount));
+        const uname  = encodeURIComponent(NJOX._stressName || '');
+        window.location.href =
+            'https://vibejam.cc/portal/2026' +
+            '?ref=metehankutlay.github.io%2Fnjox-the-game' +
+            '&hp=' + hp +
+            '&color=ffffff' +
+            '&username=' + uname;
+    }
+
+    // Send the player back to the game they came from
+    function _returnToOriginGame() {
+        if (!refUrl) return;
+        const hp    = Math.min(100, Math.max(1, ballManager.totalCount));
+        const uname = encodeURIComponent(NJOX._stressName || '');
+        window.location.href =
+            'https://' + refUrl +
+            '?portal=true' +
+            '&ref=metehankutlay.github.io%2Fnjox-the-game' +
+            '&hp=' + hp +
+            '&color=ffffff' +
+            '&username=' + uname;
+    }
+
     // ── Stress name (persistent, player-defined) ──────────────────────────
     // njox_stress_name sadece oyuncu bizzat yazarsa set edilir.
     // njox_story_seen: intro görüldü mü (isim olmasa da tekrar gösterme)
@@ -1550,6 +1581,11 @@ window.NJOX = window.NJOX || {};
     // ── TITLE ────────────────────────────────────────────────────────────
     fsm.add('TITLE', {
         enter() {
+            // Portal players skip straight to MAP — no splash screen
+            if (fromPortal) {
+                fsm.transition('MAP');
+                return;
+            }
             NJOX.TitleScreen.init();
             bossMode   = false;
             boss       = null;
@@ -1690,6 +1726,12 @@ window.NJOX = window.NJOX || {};
                     dailyMode = true;
                     // Daily seeded level — normal chapter akışı ama dailyMode=true
                     fsm.transition('START_LEVEL', { level: progress.currentChapter, daily: true });
+                },
+                // Portal config (Vibe Jam 2026)
+                {
+                    refUrl,
+                    onPortal:       _goToVibeJamPortal,
+                    onReturnPortal: _returnToOriginGame,
                 }
             );
         },
