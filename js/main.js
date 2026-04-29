@@ -83,22 +83,22 @@ window.NJOX = window.NJOX || {};
 
     const CARD_POOL = [
         // ── Positive ─────────────────────────────────────────────────────
-        { id:'fire_boost',    icon:'🔥', name:'Fire',          desc:'Fire balls deal 5× damage this round', type:'positive' },
-        { id:'chain_death',   icon:'💀', name:'Chain Death',   desc:'Kills chain 2 damage to neighbors',    type:'positive' },
-        { id:'extra_shots',   icon:'⚡', name:'+3 Shots',      desc:'+3 shots this round',                  type:'positive' },
-        { id:'stress_absorb', icon:'🧘', name:'Stress Absorb', desc:'+1 ball when stressed creature dies',  type:'positive' },
-        { id:'hp_drain',      icon:'⚔️', name:'HP Drain',     desc:'All enemies lose 25% HP',              type:'positive' },
-        { id:'ball_bonus',    icon:'🎱', name:'+3 Balls',      desc:'+3 balls permanently added',           type:'positive' },
-        { id:'gold_rush',     icon:'💰', name:'Gold Rush',     desc:'+12 gold instantly',                   type:'positive' },
-        { id:'rage_mode',     icon:'😤', name:'Rage',          desc:'+2 damage to all balls this round',    type:'positive' },
-        { id:'ice_storm',     icon:'❄️', name:'Ice Storm',     desc:'Ice balls freeze for 2 turns',         type:'positive' },
+        { id:'fire_boost',    icon:'🔥', name:'Ignite',        desc:'Fire balls hit 5× harder this round',  type:'positive' },
+        { id:'chain_death',   icon:'💀', name:'Chain Kill',    desc:'Each kill deals 2 splash to neighbors', type:'positive' },
+        { id:'extra_shots',   icon:'⚡', name:'+3 Shots',      desc:'3 extra shots this round',              type:'positive' },
+        { id:'stress_absorb', icon:'🧘', name:'Absorb',        desc:'Stressed kills give you +1 ball',       type:'positive' },
+        { id:'hp_drain',      icon:'⚔️', name:'Weaken',       desc:'All enemies lose 25% of their HP',      type:'positive' },
+        { id:'ball_bonus',    icon:'🎱', name:'+3 Balls',      desc:'Permanently adds 3 balls',              type:'positive' },
+        { id:'gold_rush',     icon:'💰', name:'Gold Rush',     desc:'Instantly gain +12 gold',               type:'positive' },
+        { id:'rage_mode',     icon:'😤', name:'Rage',          desc:'All balls deal +2 damage this round',   type:'positive' },
+        { id:'ice_storm',     icon:'❄️', name:'Ice Storm',     desc:'Ice balls freeze enemies for 2 turns',  type:'positive' },
         // ── Negative ─────────────────────────────────────────────────────
-        { id:'ball_thief',    icon:'👻', name:'Ball Thief',    desc:'Lose 2 permanent balls now',           type:'negative' },
-        { id:'blind_round',   icon:'🙈', name:'Blind Shot',    desc:'Aim line hidden this round',           type:'negative' },
-        { id:'stress_wave',   icon:'🌊', name:'Stress Wave',   desc:'All enemies get stressed +3 HP',       type:'negative' },
-        { id:'hp_surge',      icon:'💢', name:'HP Surge',      desc:'All enemies gain 30% HP',              type:'negative' },
-        { id:'wrecker_tower', icon:'🗼', name:'Wrecker Tower', desc:'Burns 2% of your balls each round',    type:'negative' },
-        { id:'spawn_guard',   icon:'⛓️', name:'Guard Spawn',   desc:'2 Chained creatures deployed now',     type:'negative' },
+        { id:'ball_thief',    icon:'👻', name:'Ball Thief',    desc:'You lose 2 balls permanently',          type:'negative' },
+        { id:'blind_round',   icon:'🙈', name:'Blind',         desc:'No aim line this round',                type:'negative' },
+        { id:'stress_wave',   icon:'🌊', name:'Stress Wave',   desc:'All enemies get stressed +3 HP',        type:'negative' },
+        { id:'hp_surge',      icon:'💢', name:'Surge',         desc:'All enemies gain 30% more HP',          type:'negative' },
+        { id:'wrecker_tower', icon:'🗼', name:'Wrecker',       desc:'Burns 2% of your balls each round',     type:'negative' },
+        { id:'spawn_guard',   icon:'⛓️', name:'Reinforced',    desc:'2 Chained enemies drop onto the field', type:'negative' },
     ];
 
     function _pickRandomCards(n) {
@@ -239,10 +239,10 @@ window.NJOX = window.NJOX || {};
             if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
                 input.consumeLaunch(); // consume click — prevent TITLE update going to MAP
                 modal.show({
-                    title:       'Change your stress',
+                    title:       'What are you fighting today?',
                     body:        '',
                     showInput:   true,
-                    placeholder: 'type your stress...',
+                    placeholder: 'type it here...',
                     submitText:  'SAVE',
                     onSubmit(val) {
                         stressName       = val;
@@ -519,9 +519,13 @@ window.NJOX = window.NJOX || {};
                     const upper = trUpper(sName);
                     const chars = [...upper];
                     const cx2   = NJOX.CANVAS_W / 2;
-                    const cy2   = NJOX.GRID_TOP + 120; // üst bölge, render CY ile eşleşir
-                    // Her harfe genişlik
-                    const charW = Math.min(54, Math.max(36, 260 / Math.max(1, chars.length)));
+                    const cy2   = NJOX.GRID_TOP + 120;
+                    // Font size scales down for long names so text fits in 460px
+                    // monospace bold char ≈ 0.58× font size wide
+                    const maxSz = Math.min(100, Math.floor(460 / Math.max(1, chars.length * 0.58)));
+                    // charW proportional to maxSz so explosion letters aren't too crowded
+                    const charW = Math.min(54, Math.max(24, maxSz * 0.55));
+                    const letterSz = Math.min(82, charW * 2);
                     const letters = chars.map((ch, i) => {
                         const sx   = cx2 + (i - (chars.length - 1) / 2) * charW;
                         const base = chars.length === 1
@@ -533,9 +537,9 @@ window.NJOX = window.NJOX || {};
                             ch, x: sx, y: cy2,
                             vx: Math.cos(base) * spd2,
                             vy: Math.sin(base) * spd2 - 100,
-                            rot: (Math.random() - 0.5) * 0.6, // hafif başlangıç açısı
-                            rotSpd: (Math.random() - 0.5) * 14, // hızlı dönüş
-                            sz: 82, growSz: 60 + Math.random() * 40,
+                            rot: (Math.random() - 0.5) * 0.6,
+                            rotSpd: (Math.random() - 0.5) * 14,
+                            sz: letterSz, growSz: 60 + Math.random() * 40,
                             life: lf, maxLife: lf,
                             color: bClr,
                         };
@@ -570,6 +574,7 @@ window.NJOX = window.NJOX || {};
                         flashTimer:  0.0,
                         fullText:    upper,
                         fullSz:      0,
+                        maxSz,
                         flashAlpha:  0,
                         darkAlpha:   0,
                         exploded:    false,
@@ -756,7 +761,7 @@ window.NJOX = window.NJOX || {};
         if (stressNameBurst) {
             if (!stressNameBurst.exploded) {
                 // Faz 1 — Gather: yazı 0→100px hızlıca büyür, ekran kararır
-                stressNameBurst.fullSz    = Math.min(100, stressNameBurst.fullSz + rawDt * 480);
+                stressNameBurst.fullSz    = Math.min(stressNameBurst.maxSz, stressNameBurst.fullSz + rawDt * 480);
                 stressNameBurst.darkAlpha = Math.min(0.52, stressNameBurst.darkAlpha + rawDt * 2.0);
                 stressNameBurst.gatherTimer -= rawDt;
                 if (stressNameBurst.gatherTimer <= 0) {
@@ -1421,10 +1426,10 @@ window.NJOX = window.NJOX || {};
                     // Son aşama geçildi → stres adı giriş modal'ı
                     this._done = true;
                     modal.show({
-                        title: 'What is your stress?',
-                        body: 'Give a name to what you want to destroy.',
+                        title: 'Name your stress.',
+                        body: 'What do you want to destroy today?',
                         showInput:   true,
-                        placeholder: 'type your stress...',
+                        placeholder: 'type it here...',
                         submitText:  'FIGHT IT',
                         onSubmit(val) {
                             stressName       = val;
@@ -1468,10 +1473,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 18px monospace';
-                c.fillText('These squares...', CX, 210);
+                c.fillText('These blocks...', CX, 210);
                 c.fillStyle = 'rgba(255,255,255,0.55)';
                 c.font      = '13px monospace';
-                c.fillText('are the stress living in your mind.', CX, 235);
+                c.fillText('are the stress living in your head.', CX, 235);
 
             } else if (this._phase === 1) {
                 // Üç yaratık yan yana — "Her gün büyüyor"
@@ -1490,10 +1495,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 18px monospace';
-                c.fillText('Growing every day...', CX, 210);
+                c.fillText('It keeps growing...', CX, 210);
                 c.fillStyle = 'rgba(255,255,255,0.55)';
                 c.font      = '13px monospace';
-                c.fillText('filling your head, wearing you out.', CX, 235);
+                c.fillText('piling up, pushing you down.', CX, 235);
 
             } else {
                 // Kırmızı tehdit — "Savaşmanın vakti"
@@ -1513,10 +1518,10 @@ window.NJOX = window.NJOX || {};
 
                 c.fillStyle = '#ffffff';
                 c.font      = 'bold 19px monospace';
-                c.fillText('Time to fight.', CX, 205);
+                c.fillText('Time to destroy it.', CX, 205);
                 c.fillStyle = '#e94560';
                 c.font      = '12px monospace';
-                c.fillText('One goal: kill the stress.', CX, 228);
+                c.fillText('One shot. One stress. Let it go.', CX, 228);
             }
 
             // Faz noktaları (alt)
@@ -2550,7 +2555,7 @@ window.NJOX = window.NJOX || {};
 
             c.fillStyle = '#ff4444';
             c.font      = 'bold 18px monospace';
-            c.fillText('⚠  STRESS REACHED THE FLOOR  ⚠', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 56);
+            c.fillText('⚠  STRESS BROKE THROUGH  ⚠', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 56);
 
             if (this._canAfford) {
                 c.fillStyle = '#ffd700';
@@ -2559,7 +2564,7 @@ window.NJOX = window.NJOX || {};
                 c.fillText(costLabel, NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 - 14);
                 c.fillStyle = 'rgba(255,255,255,0.65)';
                 c.font      = '12px monospace';
-                c.fillText('Tap — throw that stress block away!', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
+                c.fillText('Tap to clear it and keep going.', NJOX.CANVAS_W / 2, NJOX.CANVAS_H / 2 + 18);
             } else {
                 c.fillStyle = '#aaa';
                 c.font      = '16px monospace';
@@ -2628,7 +2633,7 @@ window.NJOX = window.NJOX || {};
                 c.textBaseline = 'middle';
                 c.fillStyle    = '#4ecca3';
                 c.font         = 'bold 20px monospace';
-                c.fillText('You killed ' + game.totalKills + ' ' + killName, CX, 38);
+                c.fillText(game.totalKills + ' ' + killName + ' destroyed', CX, 38);
                 c.globalAlpha  = 1;
             }
 
@@ -2637,7 +2642,7 @@ window.NJOX = window.NJOX || {};
             c.textBaseline = 'middle';
             c.fillStyle    = rev ? 'rgba(255,215,0,0.8)' : '#ffd700';
             c.font         = 'bold 17px monospace';
-            c.fillText(rev ? 'FATE REVEALED' : 'FATE CARDS', CX, CY - 115);
+            c.fillText(rev ? 'REVEALED' : 'PICK YOUR FATE', CX, CY - 115);
 
             c.fillStyle = 'rgba(255,255,255,0.28)';
             c.font      = '9px monospace';

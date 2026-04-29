@@ -128,10 +128,10 @@ NJOX.Progress = {
 
     // ── Skill Tree ───────────────────────────────────────────────────────────
     SKILL_DEFS: {
-        ironFist:     { maxLevel: 3, costs: [80, 180, 350], name: 'Iron Fist',      desc: 'Ball damage +12% per level (max +36%)' },
-        nerveSystem:  { maxLevel: 1, costs: [90],           name: 'Nerve System',   desc: 'New game retains 50% of your balls' },
-        stressShield: { maxLevel: 1, costs: [120],          name: 'Stress Shield',  desc: 'Last Chance costs no gold' },
-        bloodTaste:   { maxLevel: 2, costs: [70, 140],      name: 'Blood Taste',    desc: 'Every 5 kills grants +1 shot' },
+        ironFist:     { maxLevel: 3, costs: [80, 180, 350], name: 'Iron Fist',      desc: '+12% ball damage per level (max +36%)' },
+        nerveSystem:  { maxLevel: 1, costs: [90],           name: 'Nerve System',   desc: 'New run starts with 50% of your balls' },
+        stressShield: { maxLevel: 1, costs: [120],          name: 'Stress Shield',  desc: 'Last Chance is always free' },
+        bloodTaste:   { maxLevel: 2, costs: [70, 140],      name: 'Blood Taste',    desc: 'Every 5 kills earns +1 extra shot' },
     },
 
     getSkillCost(id) {

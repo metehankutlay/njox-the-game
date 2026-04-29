@@ -104,7 +104,7 @@ NJOX.TitleScreen = {
 
             ctx.fillStyle = '#ffffff';
             ctx.font      = 'bold 13px monospace';
-            ctx.fillText('✏  CHANGE STRESS', CX, btnY + btnH / 2 + 1);
+            ctx.fillText('✏  CHANGE TARGET', CX, btnY + btnH / 2 + 1);
 
             this._changeBtnRect = { x: btnX, y: btnY, w: btnW, h: btnH };
         }

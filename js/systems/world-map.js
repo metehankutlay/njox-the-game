@@ -442,7 +442,7 @@ NJOX.WorldMap = (function () {
         if (ch.status === 'current') {
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.font      = '13px monospace';
-            ctx.fillText('5 rounds  ×  10 shots  →  boss fight', cx, y);
+            ctx.fillText('5 rounds · 10 shots each · then the boss', cx, y);
             y += 32;
 
             // BIG PLAY button
@@ -472,7 +472,7 @@ NJOX.WorldMap = (function () {
             ctx.fillStyle = 'rgba(255,215,0,0.65)';
             ctx.font      = '12px monospace';
             ctx.fillText(
-                'Reward: ' + info.base + 'g fixed + up to ' + info.maxLoot + 'g loot',
+                info.base + 'g guaranteed  +  up to ' + info.maxLoot + 'g loot',
                 cx, y
             );
             y += 28;

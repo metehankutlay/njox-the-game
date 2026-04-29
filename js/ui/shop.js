@@ -221,7 +221,7 @@ NJOX.ShopUI = {
             ctx.font = 'bold 12px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(priceStr + ' →BUY', bX + bW / 2, bY + bH / 2);
+            ctx.fillText(priceStr + '  BUY', bX + bW / 2, bY + bH / 2);
 
             ctx.restore();
 
@@ -262,7 +262,7 @@ NJOX.ShopUI = {
         ctx.font = 'bold 15px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('PURCHASE CONFIRM', W / 2, panelY + 30);
+        ctx.fillText('CONFIRM PURCHASE', W / 2, panelY + 30);
 
         // Divider
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
